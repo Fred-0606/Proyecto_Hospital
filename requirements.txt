@@ -1,9 +1,14 @@
-numpy
 pandas
+numpy
+openpyxl
 pyarrow
-pyyaml
 scikit-learn
+imbalanced-learn
 matplotlib
-seaborn
+plotly
+pyyaml
+joblib
 jupyter
+ipykernel
 pytest
+pandera

@@ -1,1 +1,3 @@
-# Las versiones exactas se fijarán después de validar la compatibilidad del entorno.
+# Este archivo se generará posteriormente desde un entorno validado.
+# Comando previsto: python -m pip freeze > requirements-lock.txt
+# No debe editarse manualmente ni usarse todavía para instalar dependencias.
