@@ -1,20 +1,64 @@
 ---
-title: "00 — Contexto y diccionario de datos"
+title: "Etapa 00 — Contexto y diccionario de datos"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Documentar el contexto clínico, el alcance, la unidad de análisis y el diccionario de variables.
+**00 — Contexto y diccionario de datos**
 
-## Entradas esperadas
+## Objetivo
 
-- Documentación metodológica y descripción autorizada de las fuentes.
+Definir el contexto del estudio, la unidad de análisis, la cohorte, las variables y sus reglas de interpretación.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Definiciones del estudio y diccionario de datos documentado.
+- `config/settings.yml`.
+- Documentación autorizada de la fuente hospitalaria.
 
-## Pendientes
+## Salidas producidas
 
-- Completar el contexto, los criterios de inclusión y las definiciones operativas.
+- Diccionario estructurado previsto en `data/interim/00_diccionario_variables.yml`.
+- Definiciones metodológicas documentadas en esta etapa.
+
+## Criterios de validación
+
+- El archivo de configuración existe.
+- Las variables tienen nombre, tipo, descripción, unidad y condición de disponibilidad.
+- No se documentan identificadores directos ni valores individuales.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-00
+#| echo: true
+from src.paths import CONFIG_DIR, INTERIM_DATA_DIR
+
+INPUT_PATH = CONFIG_DIR / "settings.yml"
+OUTPUT_PATH = INTERIM_DATA_DIR / "00_diccionario_variables.yml"
+
+if not INPUT_PATH.is_file():
+    raise FileNotFoundError(
+        f"No existe {INPUT_PATH}. Configure settings.yml antes de ejecutar la etapa 00."
+    )
+```
+
+## Metodología
+
+TODO: completar alcance, cohorte, unidad de análisis y diccionario mediante funciones reutilizables de `src/`.
+
+## Resultados
+
+TODO: presentar únicamente definiciones verificadas; todavía no hay resultados.
+
+## Interpretación
+
+TODO: explicar las implicaciones de disponibilidad temporal, calidad y significado clínico de cada variable.
+
+## Conclusiones de la etapa
+
+TODO: registrar decisiones metodológicas y confirmar la salida antes de continuar con la etapa 01.

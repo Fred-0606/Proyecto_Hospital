@@ -1,21 +1,76 @@
 ---
-title: "04 — Ingeniería de variables"
+title: "Etapa 04 — Ingeniería de variables"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Documentar la construcción de predictores y variables objetivo mediante `src/features.py`.
+**04 — Ingeniería de variables**
 
-## Entradas esperadas
+## Objetivo
 
-- Artefacto limpio producido por la etapa 02.
-- Hallazgos documentados en la etapa 03.
+Construir predictores y variables objetivo usando únicamente información disponible en el momento definido de predicción.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Dataset analítico en `data/processed/`.
+- `data/interim/02_datos_limpios.parquet`.
+- `outputs/metrics/03_analisis_exploratorio.json`, producido por la etapa 03.
+- `config/settings.yml`.
 
-## Pendientes
+## Salidas producidas
 
-- Definir el tiempo total de estancia y el indicador de estancia prolongada configurable.
+- Dataset analítico previsto en `data/processed/04_dataset_variables.parquet`.
+- Especificación prevista en `outputs/metrics/04_variables.json`.
+
+## Criterios de validación
+
+- La estancia se calcula entre triage y salida física.
+- El umbral binario se lee desde configuración.
+- No se incluyen variables posteriores al momento de predicción.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-04
+#| echo: true
+from src.paths import (
+    CONFIG_DIR,
+    INTERIM_DATA_DIR,
+    METRICS_DIR,
+    PROCESSED_DATA_DIR,
+)
+
+RANDOM_STATE = 42
+INPUT_PATH = INTERIM_DATA_DIR / "02_datos_limpios.parquet"
+PREVIOUS_STAGE_PATH = METRICS_DIR / "03_analisis_exploratorio.json"
+SETTINGS_PATH = CONFIG_DIR / "settings.yml"
+OUTPUT_PATH = PROCESSED_DATA_DIR / "04_dataset_variables.parquet"
+
+for required_path, instruction in (
+    (INPUT_PATH, "Ejecute primero la etapa 02."),
+    (PREVIOUS_STAGE_PATH, "Ejecute primero la etapa 03."),
+    (SETTINGS_PATH, "Configure settings.yml antes de ejecutar la etapa 04."),
+):
+    if not required_path.is_file():
+        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+```
+
+## Metodología
+
+TODO: implementar variables con funciones de `src.features` y documentar su disponibilidad temporal.
+
+## Resultados
+
+TODO: describir las variables creadas y las exclusiones reales sin inventar conteos.
+
+## Interpretación
+
+TODO: discutir supuestos, riesgo de fuga y significado de las variables objetivo.
+
+## Conclusiones de la etapa
+
+TODO: confirmar el dataset analítico requerido por la etapa 05.

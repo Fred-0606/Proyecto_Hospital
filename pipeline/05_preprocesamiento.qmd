@@ -1,20 +1,67 @@
 ---
-title: "05 — Preprocesamiento"
+title: "Etapa 05 — Preprocesamiento"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Documentar la partición de datos y el preprocesamiento sin fuga de información.
+**05 — Preprocesamiento**
 
-## Entradas esperadas
+## Objetivo
 
-- Dataset analítico producido por la etapa 04.
+Separar entrenamiento, validación y prueba, y preparar variables sin fuga de información.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Particiones de entrenamiento, validación y prueba preparadas para modelado.
+- `data/processed/04_dataset_variables.parquet`, producido por la etapa 04.
 
-## Pendientes
+## Salidas producidas
 
-- Definir la estrategia de partición y los transformadores ajustados solo con entrenamiento.
+- Particiones previstas `05_train.parquet`, `05_validation.parquet` y `05_test.parquet` en `data/processed/`.
+- Metadatos previstos en `outputs/metrics/05_preprocesamiento.json`.
+
+## Criterios de validación
+
+- Las particiones son disjuntas y reproducibles.
+- La separación respeta paciente y tiempo cuando corresponda.
+- Los transformadores se ajustan solo con entrenamiento.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-05
+#| echo: true
+from src.paths import METRICS_DIR, PROCESSED_DATA_DIR
+
+RANDOM_STATE = 42
+INPUT_PATH = PROCESSED_DATA_DIR / "04_dataset_variables.parquet"
+TRAIN_PATH = PROCESSED_DATA_DIR / "05_train.parquet"
+VALIDATION_PATH = PROCESSED_DATA_DIR / "05_validation.parquet"
+TEST_PATH = PROCESSED_DATA_DIR / "05_test.parquet"
+OUTPUT_PATH = METRICS_DIR / "05_preprocesamiento.json"
+
+if not INPUT_PATH.is_file():
+    raise FileNotFoundError(
+        f"No existe {INPUT_PATH}. Ejecute primero la etapa 04."
+    )
+```
+
+## Metodología
+
+TODO: implementar partición y transformaciones mediante `src.preprocessing`.
+
+## Resultados
+
+TODO: documentar tamaños y balance reales de cada partición.
+
+## Interpretación
+
+TODO: justificar la estrategia de separación y sus implicaciones para generalización.
+
+## Conclusiones de la etapa
+
+TODO: confirmar que las particiones están listas para la etapa 06.

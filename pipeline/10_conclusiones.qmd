@@ -1,20 +1,67 @@
 ---
-title: "10 — Conclusiones"
+title: "Etapa 10 — Conclusiones"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Sintetizar hallazgos, limitaciones, implicaciones y trabajo futuro.
+**10 — Conclusiones**
 
-## Entradas esperadas
+## Objetivo
 
-- Resultados e interpretaciones producidos por las etapas anteriores.
+Integrar los hallazgos, limitaciones, implicaciones y recomendaciones del proyecto.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Conclusiones finales del proyecto.
+- `outputs/metrics/08_evaluacion.json`.
+- `outputs/metrics/09_interpretabilidad.json`, producido por la etapa 09.
 
-## Pendientes
+## Salidas producidas
 
-- Redactar las conclusiones cuando el análisis esté completo.
+- Conclusiones documentadas en esta página.
+- Síntesis final prevista en `outputs/reports/10_conclusiones.html`.
+
+## Criterios de validación
+
+- Cada afirmación está respaldada por resultados previos.
+- Se diferencian resultados predictivos, asociaciones y conclusiones clínicas.
+- Se explicitan privacidad, validez externa y limitaciones.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-10
+#| echo: true
+from src.paths import METRICS_DIR, OUTPUTS_DIR
+
+EVALUATION_PATH = METRICS_DIR / "08_evaluacion.json"
+INPUT_PATH = METRICS_DIR / "09_interpretabilidad.json"
+OUTPUT_PATH = OUTPUTS_DIR / "reports" / "10_conclusiones.html"
+
+for required_path, instruction in (
+    (EVALUATION_PATH, "Ejecute primero la etapa 08."),
+    (INPUT_PATH, "Ejecute primero la etapa 09."),
+):
+    if not required_path.is_file():
+        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+```
+
+## Metodología
+
+TODO: integrar resultados mediante referencias a los artefactos de las etapas anteriores.
+
+## Resultados
+
+TODO: resumir exclusivamente resultados calculados y validados.
+
+## Interpretación
+
+TODO: responder la pregunta de investigación con el alcance permitido por el diseño.
+
+## Conclusiones de la etapa
+
+TODO: redactar conclusiones, limitaciones, recomendaciones y trabajo futuro.

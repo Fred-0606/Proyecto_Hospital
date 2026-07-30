@@ -1,21 +1,64 @@
 ---
-title: "02 — Limpieza y calidad"
+title: "Etapa 02 — Limpieza y calidad"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Documentar la limpieza y evaluación de calidad usando funciones reutilizables de `src/`.
+**02 — Limpieza y calidad**
 
-## Entradas esperadas
+## Objetivo
 
-- Artefacto validado producido por la etapa 01.
+Aplicar reglas trazables de limpieza y evaluar la calidad del conjunto validado.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Artefacto limpio en `data/interim/`.
-- Resumen de calidad sin información sensible.
+- `data/interim/01_datos_validados.parquet`, producido por la etapa 01.
 
-## Pendientes
+## Salidas producidas
 
-- Definir reglas para faltantes, duplicados, fechas inválidas y valores extremos.
+- Datos limpios previstos en `data/interim/02_datos_limpios.parquet`.
+- Reporte agregado previsto en `outputs/metrics/02_calidad.json`.
+
+## Criterios de validación
+
+- No hay duplicados injustificados.
+- Las marcas temporales son coherentes.
+- Los faltantes y valores extremos quedan documentados, no ocultos.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-02
+#| echo: true
+from src.paths import INTERIM_DATA_DIR, METRICS_DIR
+
+INPUT_PATH = INTERIM_DATA_DIR / "01_datos_validados.parquet"
+OUTPUT_PATH = INTERIM_DATA_DIR / "02_datos_limpios.parquet"
+QUALITY_REPORT_PATH = METRICS_DIR / "02_calidad.json"
+
+if not INPUT_PATH.is_file():
+    raise FileNotFoundError(
+        f"No existe {INPUT_PATH}. Ejecute primero la etapa 01."
+    )
+```
+
+## Metodología
+
+TODO: implementar reglas con funciones de `src.cleaning` y controles de `src.validation`.
+
+## Resultados
+
+TODO: documentar cambios de filas, faltantes y reglas aplicadas sin inventar cifras.
+
+## Interpretación
+
+TODO: evaluar cómo las decisiones de limpieza pueden afectar representatividad y sesgo.
+
+## Conclusiones de la etapa
+
+TODO: confirmar la calidad mínima y la creación del artefacto para la etapa 03.

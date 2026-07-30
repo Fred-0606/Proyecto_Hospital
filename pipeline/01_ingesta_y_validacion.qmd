@@ -1,21 +1,68 @@
 ---
-title: "01 — Ingesta y validación"
+title: "Etapa 01 — Ingesta y validación"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Describir la carga segura de datos y las validaciones iniciales mediante funciones de `src/`.
+**01 — Ingesta y validación**
 
-## Entradas esperadas
+## Objetivo
 
-- Datos autorizados en `data/raw/`.
-- Configuración en `config/settings.yml`.
+Cargar la fuente autorizada y validar su estructura sin transformar los valores originales.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Artefacto validado en `data/interim/`.
+- `data/raw/database_modificado.xlsx`.
+- `data/interim/00_diccionario_variables.yml`, producido por la etapa 00.
 
-## Pendientes
+## Salidas producidas
 
-- Implementar y documentar las reglas de esquema y calidad inicial.
+- Datos validados previstos en `data/interim/01_datos_validados.parquet`.
+- Reporte agregado de validación previsto en `outputs/metrics/01_validacion.json`.
+
+## Criterios de validación
+
+- Existen ambas entradas.
+- El esquema y las columnas obligatorias coinciden con el diccionario.
+- Las fechas y tipos pueden interpretarse sin pérdida silenciosa.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-01
+#| echo: true
+from src.paths import INTERIM_DATA_DIR, METRICS_DIR, RAW_DATA_DIR
+
+INPUT_PATH = RAW_DATA_DIR / "database_modificado.xlsx"
+DICTIONARY_PATH = INTERIM_DATA_DIR / "00_diccionario_variables.yml"
+OUTPUT_PATH = INTERIM_DATA_DIR / "01_datos_validados.parquet"
+VALIDATION_REPORT_PATH = METRICS_DIR / "01_validacion.json"
+
+for required_path, instruction in (
+    (DICTIONARY_PATH, "Ejecute primero la etapa 00."),
+    (INPUT_PATH, "Ubique la fuente autorizada antes de ejecutar la etapa 01."),
+):
+    if not required_path.is_file():
+        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+```
+
+## Metodología
+
+TODO: implementar carga y validación con funciones de `src.data_io` y `src.validation`.
+
+## Resultados
+
+TODO: presentar el resumen de validación sin mostrar registros individuales.
+
+## Interpretación
+
+TODO: interpretar faltantes de esquema, tipos inesperados y limitaciones de la fuente.
+
+## Conclusiones de la etapa
+
+TODO: confirmar si los datos cumplen los criterios para ejecutar la etapa 02.

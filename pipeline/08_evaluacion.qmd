@@ -1,20 +1,75 @@
 ---
-title: "08 — Evaluación"
+title: "Etapa 08 — Evaluación"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Evaluar los modelos seleccionados con métricas separadas por partición.
+**08 — Evaluación**
 
-## Entradas esperadas
+## Objetivo
 
-- Modelos y resultados producidos por las etapas 06 y 07.
+Evaluar una sola vez los modelos seleccionados sobre la partición de prueba.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Tablas, curvas y métricas finales en `outputs/`.
+- `data/processed/05_test.parquet`.
+- `outputs/metrics/07_modelos_comparativos.json`.
+- Modelos seleccionados en `outputs/models/`.
 
-## Pendientes
+## Salidas producidas
 
-- Definir evaluación de regresión, clasificación, calibración y subgrupos.
+- Evaluación final prevista en `outputs/metrics/08_evaluacion.json`.
+- Tablas y figuras agregadas previstas en `outputs/tables/` y `outputs/figures/`.
+
+## Criterios de validación
+
+- La prueba no intervino en selección ni ajuste.
+- Las métricas se identifican claramente por tarea y partición.
+- Se documentan incertidumbre, calibración y análisis de subgrupos cuando sean viables.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-08
+#| echo: true
+from src.paths import (
+    FIGURES_DIR,
+    METRICS_DIR,
+    MODELS_DIR,
+    PROCESSED_DATA_DIR,
+    TABLES_DIR,
+)
+
+RANDOM_STATE = 42
+TEST_PATH = PROCESSED_DATA_DIR / "05_test.parquet"
+COMPARISON_PATH = METRICS_DIR / "07_modelos_comparativos.json"
+OUTPUT_PATH = METRICS_DIR / "08_evaluacion.json"
+
+for required_path, instruction in (
+    (TEST_PATH, "Ejecute primero la etapa 05."),
+    (COMPARISON_PATH, "Ejecute primero la etapa 07."),
+):
+    if not required_path.is_file():
+        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+```
+
+## Metodología
+
+TODO: cargar los modelos seleccionados y evaluarlos mediante `src.evaluation`.
+
+## Resultados
+
+TODO: incorporar métricas, curvas y tablas calculadas; no hay valores todavía.
+
+## Interpretación
+
+TODO: valorar utilidad, errores, incertidumbre y diferencias entre subgrupos.
+
+## Conclusiones de la etapa
+
+TODO: resumir desempeño final y limitaciones para la etapa 09.

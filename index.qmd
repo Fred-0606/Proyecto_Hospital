@@ -1,20 +1,59 @@
 ---
 title: "Proyecto Hospital"
 format: html
+execute:
+  error: true
 ---
 
-## Propósito
+## Descripción general
 
-Presentar el proyecto y servir como punto de entrada a sus documentos Quarto.
+Proyecto de grado de Maestría en Ciencia de Datos para analizar y predecir estancias prolongadas en un servicio de urgencias hospitalarias de Bogotá. El flujo combina documentos Quarto para la narrativa con funciones reutilizables en `src/`.
 
-## Entradas esperadas
+## Pregunta de investigación
 
-- Documentos y artefactos generados por el pipeline.
+¿Qué características disponibles durante la atención permiten explicar y predecir el tiempo total de estancia y la ocurrencia de estancias prolongadas en el servicio de urgencias?
 
-## Salidas esperadas
+## Objetivo general
 
-- Página principal renderizada del proyecto.
+Desarrollar un proceso reproducible para analizar el tiempo de estancia y comparar modelos predictivos de regresión y clasificación, evitando fuga de información y documentando sus limitaciones.
+
+## Variable dependiente
+
+La variable dependiente principal es el tiempo total, expresado en horas, entre el triage y la salida física. La variable binaria de estancia prolongada se deriva de un umbral configurable en `config/settings.yml`, inicialmente establecido en 12 horas.
+
+## Diagrama textual del pipeline
+
+```text
+00 Contexto y diccionario
+  → 01 Ingesta y validación
+  → 02 Limpieza y calidad
+  → 03 Análisis exploratorio
+  → 04 Ingeniería de variables
+  → 05 Preprocesamiento
+  → 06 Modelo baseline
+  → 07 Modelos comparativos
+  → 08 Evaluación
+  → 09 Interpretabilidad
+  → 10 Conclusiones
+```
+
+## Estado y acceso a los módulos
+
+| Etapa | Documento | Estado |
+|---:|---|---|
+| 00 | [Contexto y diccionario](pipeline/00_contexto_y_diccionario.qmd) | Esqueleto documentado; contenido pendiente |
+| 01 | [Ingesta y validación](pipeline/01_ingesta_y_validacion.qmd) | Esqueleto documentado; implementación pendiente |
+| 02 | [Limpieza y calidad](pipeline/02_limpieza_y_calidad.qmd) | Esqueleto documentado; implementación pendiente |
+| 03 | [Análisis exploratorio](pipeline/03_analisis_exploratorio.qmd) | Esqueleto documentado; análisis pendiente |
+| 04 | [Ingeniería de variables](pipeline/04_ingenieria_variables.qmd) | Esqueleto documentado; implementación pendiente |
+| 05 | [Preprocesamiento](pipeline/05_preprocesamiento.qmd) | Esqueleto documentado; implementación pendiente |
+| 06 | [Modelo baseline](pipeline/06_modelo_baseline.qmd) | Esqueleto documentado; modelado pendiente |
+| 07 | [Modelos comparativos](pipeline/07_modelos_comparativos.qmd) | Esqueleto documentado; modelado pendiente |
+| 08 | [Evaluación](pipeline/08_evaluacion.qmd) | Esqueleto documentado; evaluación pendiente |
+| 09 | [Interpretabilidad](pipeline/09_interpretabilidad.qmd) | Esqueleto documentado; interpretación pendiente |
+| 10 | [Conclusiones](pipeline/10_conclusiones.qmd) | Esqueleto documentado; redacción pendiente |
 
 ## Pendientes
 
-- Incorporar el resumen, los objetivos y los principales resultados cuando estén disponibles.
+- Ejecutar cada etapa en orden cuando se disponga de los datos autorizados.
+- Actualizar los estados sin inventar resultados.

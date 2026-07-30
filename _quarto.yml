@@ -1,6 +1,7 @@
 project:
   type: website
   output-dir: _site
+  execute-dir: project
   render:
     - index.qmd
     - pipeline/00_contexto_y_diccionario.qmd

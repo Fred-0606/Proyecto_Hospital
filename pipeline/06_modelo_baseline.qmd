@@ -1,20 +1,68 @@
 ---
-title: "06 — Modelo baseline"
+title: "Etapa 06 — Modelo baseline"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Establecer modelos de referencia para regresión y clasificación.
+**06 — Modelo baseline**
 
-## Entradas esperadas
+## Objetivo
 
-- Particiones producidas por la etapa 05.
+Establecer referencias simples y reproducibles para regresión y clasificación.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Modelos baseline y métricas separadas en `outputs/`.
+- Particiones `05_train.parquet` y `05_validation.parquet`, producidas por la etapa 05.
+- `outputs/metrics/05_preprocesamiento.json`.
 
-## Pendientes
+## Salidas producidas
 
-- Seleccionar baselines y definir criterios mínimos de comparación.
+- Modelos baseline previstos en `outputs/models/`.
+- Métricas previstas en `outputs/metrics/06_baseline.json`.
+
+## Criterios de validación
+
+- Se usa `random_state=42` cuando aplica.
+- Entrenamiento y validación se reportan por separado.
+- El conjunto de prueba permanece sin utilizar.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-06
+#| echo: true
+from src.paths import METRICS_DIR, MODELS_DIR, PROCESSED_DATA_DIR
+
+RANDOM_STATE = 42
+TRAIN_PATH = PROCESSED_DATA_DIR / "05_train.parquet"
+VALIDATION_PATH = PROCESSED_DATA_DIR / "05_validation.parquet"
+PREVIOUS_STAGE_PATH = METRICS_DIR / "05_preprocesamiento.json"
+OUTPUT_PATH = METRICS_DIR / "06_baseline.json"
+
+for required_path in (TRAIN_PATH, VALIDATION_PATH, PREVIOUS_STAGE_PATH):
+    if not required_path.is_file():
+        raise FileNotFoundError(
+            f"No existe {required_path}. Ejecute primero la etapa 05."
+        )
+```
+
+## Metodología
+
+TODO: entrenar referencias con funciones de `src.models` y medirlas con `src.evaluation`.
+
+## Resultados
+
+TODO: presentar métricas reales separadas; no hay resultados calculados todavía.
+
+## Interpretación
+
+TODO: explicar qué nivel mínimo deben superar los modelos comparativos.
+
+## Conclusiones de la etapa
+
+TODO: registrar los baselines que pasarán a la etapa 07.

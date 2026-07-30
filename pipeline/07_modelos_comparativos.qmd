@@ -1,21 +1,70 @@
 ---
-title: "07 — Modelos comparativos"
+title: "Etapa 07 — Modelos comparativos"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Comparar modelos candidatos bajo un protocolo reproducible.
+**07 — Modelos comparativos**
 
-## Entradas esperadas
+## Objetivo
 
-- Particiones producidas por la etapa 05.
-- Resultados baseline de la etapa 06.
+Entrenar y comparar modelos candidatos bajo el mismo protocolo de validación.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Modelos candidatos y métricas de comparación en `outputs/`.
+- Particiones de entrenamiento y validación de la etapa 05.
+- `outputs/metrics/06_baseline.json`, producido por la etapa 06.
 
-## Pendientes
+## Salidas producidas
 
-- Definir modelos, hiperparámetros y estrategia de selección.
+- Modelos candidatos previstos en `outputs/models/`.
+- Comparación prevista en `outputs/metrics/07_modelos_comparativos.json`.
+
+## Criterios de validación
+
+- La selección usa únicamente entrenamiento y validación.
+- Los procesos aleatorios emplean semilla 42.
+- Las métricas de clasificación incluyen recall, precision, F1, ROC-AUC y PR-AUC cuando sean aplicables.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-07
+#| echo: true
+from src.paths import METRICS_DIR, MODELS_DIR, PROCESSED_DATA_DIR
+
+RANDOM_STATE = 42
+TRAIN_PATH = PROCESSED_DATA_DIR / "05_train.parquet"
+VALIDATION_PATH = PROCESSED_DATA_DIR / "05_validation.parquet"
+BASELINE_PATH = METRICS_DIR / "06_baseline.json"
+OUTPUT_PATH = METRICS_DIR / "07_modelos_comparativos.json"
+
+for required_path, instruction in (
+    (TRAIN_PATH, "Ejecute primero la etapa 05."),
+    (VALIDATION_PATH, "Ejecute primero la etapa 05."),
+    (BASELINE_PATH, "Ejecute primero la etapa 06."),
+):
+    if not required_path.is_file():
+        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+```
+
+## Metodología
+
+TODO: definir candidatos y búsqueda controlada mediante `src.models`.
+
+## Resultados
+
+TODO: presentar comparaciones reales sin completar métricas manualmente.
+
+## Interpretación
+
+TODO: evaluar desempeño, estabilidad, complejidad y utilidad clínica potencial.
+
+## Conclusiones de la etapa
+
+TODO: seleccionar justificadamente el modelo que pasará a evaluación.

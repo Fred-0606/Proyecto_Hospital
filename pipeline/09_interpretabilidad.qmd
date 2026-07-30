@@ -1,20 +1,69 @@
 ---
-title: "09 — Interpretabilidad"
+title: "Etapa 09 — Interpretabilidad"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Interpretar el comportamiento de los modelos sin atribuir causalidad indebidamente.
+**09 — Interpretabilidad**
 
-## Entradas esperadas
+## Objetivo
 
-- Modelo seleccionado y artefactos de evaluación de la etapa 08.
+Explicar el comportamiento global y local de los modelos seleccionados sin inferir causalidad.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Figuras y análisis de interpretabilidad en `outputs/`.
+- `outputs/metrics/08_evaluacion.json`, producido por la etapa 08.
+- Modelos seleccionados en `outputs/models/`.
+- Partición de prueba de la etapa 05.
 
-## Pendientes
+## Salidas producidas
 
-- Seleccionar métodos globales y locales con controles de privacidad.
+- Resumen previsto en `outputs/metrics/09_interpretabilidad.json`.
+- Figuras y tablas interpretativas agregadas en `outputs/`.
+
+## Criterios de validación
+
+- Los métodos son compatibles con el modelo y el preprocesamiento.
+- Las explicaciones no revelan registros individuales.
+- Asociación predictiva no se presenta como causalidad.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-09
+#| echo: true
+from src.paths import FIGURES_DIR, METRICS_DIR, MODELS_DIR, PROCESSED_DATA_DIR, TABLES_DIR
+
+RANDOM_STATE = 42
+EVALUATION_PATH = METRICS_DIR / "08_evaluacion.json"
+TEST_PATH = PROCESSED_DATA_DIR / "05_test.parquet"
+OUTPUT_PATH = METRICS_DIR / "09_interpretabilidad.json"
+
+for required_path, instruction in (
+    (EVALUATION_PATH, "Ejecute primero la etapa 08."),
+    (TEST_PATH, "Ejecute primero la etapa 05."),
+):
+    if not required_path.is_file():
+        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+```
+
+## Metodología
+
+TODO: implementar métodos de interpretación usando utilidades de `src.models` y `src.plots`.
+
+## Resultados
+
+TODO: insertar explicaciones reales y agregadas cuando estén disponibles.
+
+## Interpretación
+
+TODO: discutir estabilidad, plausibilidad y límites de las explicaciones.
+
+## Conclusiones de la etapa
+
+TODO: sintetizar factores predictivos y precauciones para la etapa 10.

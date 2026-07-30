@@ -1,20 +1,63 @@
 ---
-title: "03 — Análisis exploratorio"
+title: "Etapa 03 — Análisis exploratorio"
 format: html
+jupyter: python3
+execute:
+  error: true
+  warning: true
 ---
 
-## Propósito
+## Número y nombre de etapa
 
-Explorar la población, las variables y la estancia sin exponer registros individuales.
+**03 — Análisis exploratorio**
 
-## Entradas esperadas
+## Objetivo
 
-- Artefacto limpio producido por la etapa 02.
+Caracterizar la cohorte, las distribuciones y las relaciones relevantes mediante resultados agregados.
 
-## Salidas esperadas
+## Entradas requeridas
 
-- Figuras y tablas agregadas en `outputs/`.
+- `data/interim/02_datos_limpios.parquet`, producido por la etapa 02.
 
-## Pendientes
+## Salidas producidas
 
-- Definir análisis descriptivos, controles de privacidad e interpretaciones.
+- Resumen previsto en `outputs/metrics/03_analisis_exploratorio.json`.
+- Figuras y tablas agregadas en `outputs/figures/` y `outputs/tables/`.
+
+## Criterios de validación
+
+- Las estadísticas respetan unidades y denominadores definidos.
+- No se exponen registros ni grupos con riesgo de reidentificación.
+- Las visualizaciones tienen títulos, etiquetas y fuentes claras.
+
+## Preparación e importaciones desde `src/`
+
+```{python}
+#| label: setup-etapa-03
+#| echo: true
+from src.paths import FIGURES_DIR, INTERIM_DATA_DIR, METRICS_DIR, TABLES_DIR
+
+INPUT_PATH = INTERIM_DATA_DIR / "02_datos_limpios.parquet"
+OUTPUT_PATH = METRICS_DIR / "03_analisis_exploratorio.json"
+
+if not INPUT_PATH.is_file():
+    raise FileNotFoundError(
+        f"No existe {INPUT_PATH}. Ejecute primero la etapa 02."
+    )
+```
+
+## Metodología
+
+TODO: implementar resúmenes y gráficos con funciones de `src.evaluation` y `src.plots`.
+
+## Resultados
+
+TODO: insertar tablas y figuras reales cuando se ejecute el análisis autorizado.
+
+## Interpretación
+
+TODO: interpretar patrones descriptivos sin hacer afirmaciones causales.
+
+## Conclusiones de la etapa
+
+TODO: sintetizar hallazgos que orienten la ingeniería de variables de la etapa 04.
