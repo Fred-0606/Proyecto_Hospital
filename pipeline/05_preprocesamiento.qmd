@@ -1,0 +1,20 @@
+---
+title: "05 — Preprocesamiento"
+format: html
+---
+
+## Propósito
+
+Documentar la partición de datos y el preprocesamiento sin fuga de información.
+
+## Entradas esperadas
+
+- Dataset analítico producido por la etapa 04.
+
+## Salidas esperadas
+
+- Particiones de entrenamiento, validación y prueba preparadas para modelado.
+
+## Pendientes
+
+- Definir la estrategia de partición y los transformadores ajustados solo con entrenamiento.

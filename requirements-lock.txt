@@ -1,0 +1,1 @@
+# Las versiones exactas se fijarán después de validar la compatibilidad del entorno.

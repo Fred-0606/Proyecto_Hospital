@@ -1,0 +1,20 @@
+---
+title: "03 — Análisis exploratorio"
+format: html
+---
+
+## Propósito
+
+Explorar la población, las variables y la estancia sin exponer registros individuales.
+
+## Entradas esperadas
+
+- Artefacto limpio producido por la etapa 02.
+
+## Salidas esperadas
+
+- Figuras y tablas agregadas en `outputs/`.
+
+## Pendientes
+
+- Definir análisis descriptivos, controles de privacidad e interpretaciones.

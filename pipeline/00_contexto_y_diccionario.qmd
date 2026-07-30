@@ -1,0 +1,20 @@
+---
+title: "00 — Contexto y diccionario de datos"
+format: html
+---
+
+## Propósito
+
+Documentar el contexto clínico, el alcance, la unidad de análisis y el diccionario de variables.
+
+## Entradas esperadas
+
+- Documentación metodológica y descripción autorizada de las fuentes.
+
+## Salidas esperadas
+
+- Definiciones del estudio y diccionario de datos documentado.
+
+## Pendientes
+
+- Completar el contexto, los criterios de inclusión y las definiciones operativas.

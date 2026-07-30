@@ -1,0 +1,12 @@
+project:
+  random_state: 42
+  timezone: "America/Bogota"
+
+paths:
+  raw: "data/raw"
+  interim: "data/interim"
+  processed: "data/processed"
+  outputs: "outputs"
+
+target:
+  prolonged_stay_hours: 12

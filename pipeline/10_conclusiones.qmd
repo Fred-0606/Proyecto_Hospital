@@ -1,0 +1,20 @@
+---
+title: "10 — Conclusiones"
+format: html
+---
+
+## Propósito
+
+Sintetizar hallazgos, limitaciones, implicaciones y trabajo futuro.
+
+## Entradas esperadas
+
+- Resultados e interpretaciones producidos por las etapas anteriores.
+
+## Salidas esperadas
+
+- Conclusiones finales del proyecto.
+
+## Pendientes
+
+- Redactar las conclusiones cuando el análisis esté completo.

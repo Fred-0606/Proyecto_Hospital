@@ -1,0 +1,21 @@
+---
+title: "02 — Limpieza y calidad"
+format: html
+---
+
+## Propósito
+
+Documentar la limpieza y evaluación de calidad usando funciones reutilizables de `src/`.
+
+## Entradas esperadas
+
+- Artefacto validado producido por la etapa 01.
+
+## Salidas esperadas
+
+- Artefacto limpio en `data/interim/`.
+- Resumen de calidad sin información sensible.
+
+## Pendientes
+
+- Definir reglas para faltantes, duplicados, fechas inválidas y valores extremos.

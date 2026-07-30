@@ -1,0 +1,41 @@
+# Entornos y cachés de Python
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Variables de entorno y credenciales
+.env
+.env.*
+!.env.example
+
+# Datos hospitalarios y artefactos derivados
+data/raw/*
+data/interim/*
+data/processed/*
+!data/raw/.gitkeep
+!data/interim/.gitkeep
+!data/processed/.gitkeep
+
+# Resultados generados
+outputs/figures/*
+outputs/tables/*
+outputs/metrics/*
+outputs/models/*
+outputs/reports/*
+!outputs/figures/.gitkeep
+!outputs/tables/.gitkeep
+!outputs/metrics/.gitkeep
+!outputs/models/.gitkeep
+!outputs/reports/.gitkeep
+
+# Archivos de Quarto
+/.quarto/
+*_files/
+
+# Sistema operativo y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

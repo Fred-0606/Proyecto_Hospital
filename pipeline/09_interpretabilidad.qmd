@@ -1,0 +1,20 @@
+---
+title: "09 — Interpretabilidad"
+format: html
+---
+
+## Propósito
+
+Interpretar el comportamiento de los modelos sin atribuir causalidad indebidamente.
+
+## Entradas esperadas
+
+- Modelo seleccionado y artefactos de evaluación de la etapa 08.
+
+## Salidas esperadas
+
+- Figuras y análisis de interpretabilidad en `outputs/`.
+
+## Pendientes
+
+- Seleccionar métodos globales y locales con controles de privacidad.

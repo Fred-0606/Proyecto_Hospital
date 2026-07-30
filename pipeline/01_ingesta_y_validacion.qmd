@@ -1,0 +1,21 @@
+---
+title: "01 — Ingesta y validación"
+format: html
+---
+
+## Propósito
+
+Describir la carga segura de datos y las validaciones iniciales mediante funciones de `src/`.
+
+## Entradas esperadas
+
+- Datos autorizados en `data/raw/`.
+- Configuración en `config/settings.yml`.
+
+## Salidas esperadas
+
+- Artefacto validado en `data/interim/`.
+
+## Pendientes
+
+- Implementar y documentar las reglas de esquema y calidad inicial.

@@ -1,0 +1,21 @@
+---
+title: "07 — Modelos comparativos"
+format: html
+---
+
+## Propósito
+
+Comparar modelos candidatos bajo un protocolo reproducible.
+
+## Entradas esperadas
+
+- Particiones producidas por la etapa 05.
+- Resultados baseline de la etapa 06.
+
+## Salidas esperadas
+
+- Modelos candidatos y métricas de comparación en `outputs/`.
+
+## Pendientes
+
+- Definir modelos, hiperparámetros y estrategia de selección.

@@ -1,0 +1,20 @@
+---
+title: "06 — Modelo baseline"
+format: html
+---
+
+## Propósito
+
+Establecer modelos de referencia para regresión y clasificación.
+
+## Entradas esperadas
+
+- Particiones producidas por la etapa 05.
+
+## Salidas esperadas
+
+- Modelos baseline y métricas separadas en `outputs/`.
+
+## Pendientes
+
+- Seleccionar baselines y definir criterios mínimos de comparación.

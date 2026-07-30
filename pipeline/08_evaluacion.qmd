@@ -1,0 +1,20 @@
+---
+title: "08 — Evaluación"
+format: html
+---
+
+## Propósito
+
+Evaluar los modelos seleccionados con métricas separadas por partición.
+
+## Entradas esperadas
+
+- Modelos y resultados producidos por las etapas 06 y 07.
+
+## Salidas esperadas
+
+- Tablas, curvas y métricas finales en `outputs/`.
+
+## Pendientes
+
+- Definir evaluación de regresión, clasificación, calibración y subgrupos.

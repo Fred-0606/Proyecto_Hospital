@@ -1,0 +1,17 @@
+project:
+  type: website
+  output-dir: outputs/reports
+
+website:
+  title: "Proyecto Hospital"
+  navbar:
+    left:
+      - href: index.qmd
+        text: Inicio
+
+format:
+  html:
+    toc: true
+
+execute:
+  freeze: auto

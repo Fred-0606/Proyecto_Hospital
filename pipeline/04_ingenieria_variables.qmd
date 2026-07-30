@@ -1,0 +1,21 @@
+---
+title: "04 — Ingeniería de variables"
+format: html
+---
+
+## Propósito
+
+Documentar la construcción de predictores y variables objetivo mediante `src/features.py`.
+
+## Entradas esperadas
+
+- Artefacto limpio producido por la etapa 02.
+- Hallazgos documentados en la etapa 03.
+
+## Salidas esperadas
+
+- Dataset analítico en `data/processed/`.
+
+## Pendientes
+
+- Definir el tiempo total de estancia y el indicador de estancia prolongada configurable.

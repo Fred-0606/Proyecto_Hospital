@@ -1,0 +1,20 @@
+---
+title: "Proyecto Hospital"
+format: html
+---
+
+## Propósito
+
+Presentar el proyecto y servir como punto de entrada a sus documentos Quarto.
+
+## Entradas esperadas
+
+- Documentos y artefactos generados por el pipeline.
+
+## Salidas esperadas
+
+- Página principal renderizada del proyecto.
+
+## Pendientes
+
+- Incorporar el resumen, los objetivos y los principales resultados cuando estén disponibles.
