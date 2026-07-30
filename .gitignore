@@ -1,11 +1,22 @@
-# Entornos y cachés de Python
+# Python: entornos, cachés y herramientas
 .venv/
 __pycache__/
 *.py[cod]
+*$py.class
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
 .ipynb_checkpoints/
 
-# Variables de entorno y credenciales
+# Positron y editores
+.positron/
+.vscode/
+.idea/
+
+# Variables de entorno, credenciales y secretos
 .env
 .env.*
 !.env.example
@@ -18,24 +29,33 @@ data/processed/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 
-# Resultados generados
-outputs/figures/*
-outputs/tables/*
-outputs/metrics/*
-outputs/models/*
-outputs/reports/*
-!outputs/figures/.gitkeep
-!outputs/tables/.gitkeep
-!outputs/metrics/.gitkeep
-!outputs/models/.gitkeep
-!outputs/reports/.gitkeep
+# Protección explícita del archivo fuente sensible
+database_modificado.xlsx
+**/database_modificado.xlsx
 
-# Archivos de Quarto
-/.quarto/
+# Modelos serializados
+*.pkl
+*.pickle
+*.joblib
+*.onnx
+outputs/models/*
+!outputs/models/.gitkeep
+
+# Quarto
+_site/
+.quarto/
 *_files/
 
-# Sistema operativo y editores
+# Archivos temporales
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+~$*
+
+# Windows y otros sistemas operativos
 .DS_Store
 Thumbs.db
-.vscode/
-.idea/
+Desktop.ini
+$RECYCLE.BIN/

@@ -1,17 +1,57 @@
 project:
   type: website
-  output-dir: outputs/reports
+  output-dir: _site
+  render:
+    - index.qmd
+    - pipeline/00_contexto_y_diccionario.qmd
+    - pipeline/01_ingesta_y_validacion.qmd
+    - pipeline/02_limpieza_y_calidad.qmd
+    - pipeline/03_analisis_exploratorio.qmd
+    - pipeline/04_ingenieria_variables.qmd
+    - pipeline/05_preprocesamiento.qmd
+    - pipeline/06_modelo_baseline.qmd
+    - pipeline/07_modelos_comparativos.qmd
+    - pipeline/08_evaluacion.qmd
+    - pipeline/09_interpretabilidad.qmd
+    - pipeline/10_conclusiones.qmd
 
 website:
   title: "Proyecto Hospital"
-  navbar:
-    left:
+  sidebar:
+    style: docked
+    contents:
       - href: index.qmd
-        text: Inicio
+        text: "Inicio"
+      - href: pipeline/00_contexto_y_diccionario.qmd
+        text: "00 — Contexto y diccionario"
+      - href: pipeline/01_ingesta_y_validacion.qmd
+        text: "01 — Ingesta y validación"
+      - href: pipeline/02_limpieza_y_calidad.qmd
+        text: "02 — Limpieza y calidad"
+      - href: pipeline/03_analisis_exploratorio.qmd
+        text: "03 — Análisis exploratorio"
+      - href: pipeline/04_ingenieria_variables.qmd
+        text: "04 — Ingeniería de variables"
+      - href: pipeline/05_preprocesamiento.qmd
+        text: "05 — Preprocesamiento"
+      - href: pipeline/06_modelo_baseline.qmd
+        text: "06 — Modelo baseline"
+      - href: pipeline/07_modelos_comparativos.qmd
+        text: "07 — Modelos comparativos"
+      - href: pipeline/08_evaluacion.qmd
+        text: "08 — Evaluación"
+      - href: pipeline/09_interpretabilidad.qmd
+        text: "09 — Interpretabilidad"
+      - href: pipeline/10_conclusiones.qmd
+        text: "10 — Conclusiones"
 
 format:
   html:
     toc: true
+    number-sections: true
+    code-fold: true
+
+jupyter: python3
 
 execute:
   freeze: auto
