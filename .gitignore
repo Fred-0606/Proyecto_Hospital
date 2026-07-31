@@ -29,6 +29,11 @@ data/processed/*
 !data/interim/.gitkeep
 !data/processed/.gitkeep
 
+# Evidencias locales derivadas de la etapa 01
+outputs/figures/01_*
+outputs/metrics/01_*
+outputs/tables/01_*
+
 # Protección explícita del archivo fuente sensible
 database_modificado.xlsx
 **/database_modificado.xlsx

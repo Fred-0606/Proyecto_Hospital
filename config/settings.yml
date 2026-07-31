@@ -10,3 +10,6 @@ paths:
 
 target:
   prolonged_stay_hours: 12
+
+validation:
+  earliest_date: "1900-01-01"

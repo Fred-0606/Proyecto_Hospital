@@ -1,0 +1,5 @@
+# Configuración del analizador estático Pyrefly.
+# Las rutas son relativas a la raíz del repositorio y funcionan en Windows.
+project-includes = ["src", "scripts", "tests"]
+search-path = ["."]
+python-interpreter-path = ".venv/Scripts/python.exe"

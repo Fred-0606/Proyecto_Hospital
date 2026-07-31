@@ -1,68 +1,404 @@
 ---
 title: "Etapa 01 — Ingesta y validación"
-format: html
+format:
+  html:
+    code-fold: false
+    code-overflow: scroll
+    df-print: paged
 jupyter: python3
 execute:
-  error: true
-  warning: true
+  echo: true
+  output: true
+  error: false
+  warning: false
+  freeze: false
 ---
 
-## Número y nombre de etapa
+## 1. Objetivo
 
-**01 — Ingesta y validación**
-
-## Objetivo
-
-Cargar la fuente autorizada y validar su estructura sin transformar los valores originales.
-
-## Entradas requeridas
-
-- `data/raw/database_modificado.xlsx`.
-- `data/interim/00_diccionario_variables.yml`, producido por la etapa 00.
-
-## Salidas producidas
-
-- Datos validados previstos en `data/interim/01_datos_validados.parquet`.
-- Reporte agregado de validación previsto en `outputs/metrics/01_validacion.json`.
-
-## Criterios de validación
-
-- Existen ambas entradas.
-- El esquema y las columnas obligatorias coinciden con el diccionario.
-- Las fechas y tipos pueden interpretarse sin pérdida silenciosa.
-
-## Preparación e importaciones desde `src/`
+Leer exclusivamente la hoja `CENSO`, usando la segunda fila como encabezado, identificar la estructura del DataFrame y producir evidencias informativas de calidad sin limpiar, corregir, imputar o eliminar valores.
 
 ```{python}
-#| label: setup-etapa-01
-#| echo: true
-from src.paths import INTERIM_DATA_DIR, METRICS_DIR, RAW_DATA_DIR
+#| label: configuracion-etapa-01
+from IPython.display import Image, Markdown, display
+import pandas as pd
+import yaml
 
-INPUT_PATH = RAW_DATA_DIR / "database_modificado.xlsx"
-DICTIONARY_PATH = INTERIM_DATA_DIR / "00_diccionario_variables.yml"
-OUTPUT_PATH = INTERIM_DATA_DIR / "01_datos_validados.parquet"
-VALIDATION_REPORT_PATH = METRICS_DIR / "01_validacion.json"
+from src.data_io import (
+    get_excel_sheet_names,
+    get_source_excel_path,
+    require_file,
+    require_sheet,
+)
+from src.paths import CONFIG_DIR, FIGURES_DIR, METRICS_DIR, TABLES_DIR
+from src.validation import run_stage_01
 
-for required_path, instruction in (
-    (DICTIONARY_PATH, "Ejecute primero la etapa 00."),
-    (INPUT_PATH, "Ubique la fuente autorizada antes de ejecutar la etapa 01."),
-):
-    if not required_path.is_file():
-        raise FileNotFoundError(f"No existe {required_path}. {instruction}")
+with (CONFIG_DIR / "settings.yml").open(encoding="utf-8") as settings_file:
+    settings = yaml.safe_load(settings_file)
+
+earliest_date = settings["validation"]["earliest_date"]
+display(Markdown(
+    "La etapa está configurada como **informativa** y no modifica el libro fuente."
+))
 ```
 
-## Metodología
+## 2. Archivo analizado
 
-TODO: implementar carga y validación con funciones de `src.data_io` y `src.validation`.
+```{python}
+#| label: archivo-analizado
+source_path = get_source_excel_path()
+display(Markdown(f"Archivo fuente: `{source_path.relative_to(source_path.parents[2]).as_posix()}`"))
+```
 
-## Resultados
+La ruta se obtiene desde `src.paths` y no depende del directorio de trabajo.
 
-TODO: presentar el resumen de validación sin mostrar registros individuales.
+## 3. Verificación de existencia
 
-## Interpretación
+```{python}
+#| label: verificar-existencia
+require_file(
+    source_path,
+    "Ubique data/raw/database_modificado.xlsx antes de ejecutar la etapa 01.",
+)
+display(Markdown(f"El archivo requerido existe y ocupa **{source_path.stat().st_size:,} bytes**."))
+```
 
-TODO: interpretar faltantes de esquema, tipos inesperados y limitaciones de la fuente.
+La ejecución se detiene con un error claro si el archivo no está disponible.
 
-## Conclusiones de la etapa
+## 4. Verificación de la hoja CENSO
 
-TODO: confirmar si los datos cumplen los criterios para ejecutar la etapa 02.
+```{python}
+#| label: verificar-hoja-censo
+sheet_names = get_excel_sheet_names(source_path)
+require_sheet(source_path, sheet_names, "CENSO")
+ignored_sheets = [name for name in sheet_names if name != "CENSO"]
+display(Markdown(
+    f"Se verificaron **{len(sheet_names):,}** nombres de hojas. "
+    f"`CENSO` existe y **{len(ignored_sheets):,}** hojas serán ignoradas."
+))
+```
+
+Solo se consultaron los nombres de las hojas; sus contenidos no se cargaron.
+
+## 5. Lectura del DataFrame
+
+```{python}
+#| label: ejecutar-ingesta-validacion
+results = run_stage_01(earliest_date=earliest_date)
+df_censo_original = results["original_dataframe"]
+df_censo_identificado = results["dataframe"]
+values_preserved = df_censo_original.set_axis(
+    df_censo_identificado.columns,
+    axis="columns",
+).equals(df_censo_identificado)
+display(Markdown(
+    f"La hoja `CENSO` produjo un DataFrame de **{len(df_censo_original):,} registros**. "
+    f"La conservación de los valores después de normalizar encabezados es **{values_preserved}**."
+))
+display(df_censo_identificado.head())
+```
+
+La primera fila de la hoja fue descartada y la segunda se utilizó como encabezado mediante `header=1`. La vista corresponde exclusivamente a `CENSO`.
+
+## 6. Dimensiones
+
+```{python}
+#| label: dimensiones
+dimensions = results["dimensions"]
+display(dimensions)
+dimension_row = dimensions.iloc[0]
+display(Markdown(
+    f"Se identificaron **{dimension_row['filas']:,.0f} filas**, "
+    f"**{dimension_row['columnas']:,.0f} columnas** y "
+    f"**{dimension_row['completitud_porcentaje']:.2f}%** de completitud global. "
+    "Evidencia: `outputs/tables/01_dimensiones.csv`."
+))
+```
+
+Las dimensiones se calcularon sobre la hoja leída, sin excluir registros.
+
+## 7. Nombres de columnas
+
+```{python}
+#| label: nombres-columnas
+display(results["columns"])
+display(Markdown(
+    f"Se documentaron **{len(results['columns']):,}** correspondencias entre "
+    "encabezados originales y normalizados. Evidencia: `outputs/tables/01_columnas.csv`."
+))
+```
+
+La normalización afecta únicamente los encabezados; los valores permanecen intactos.
+
+## 8. Tipos de datos
+
+```{python}
+#| label: tipos-datos
+data_types = results["data_types"]
+display(data_types)
+mixed_count = int(data_types["contiene_tipos_mixtos"].sum())
+display(Markdown(
+    f"Se detectaron **{mixed_count:,}** columnas con más de un tipo Python real. "
+    "Evidencia: `outputs/tables/01_tipos_datos.csv`."
+))
+```
+
+Los tipos son inferencias iniciales de pandas y todavía no constituyen conversiones definitivas.
+
+## 9. Valores nulos
+
+```{python}
+#| label: valores-nulos
+display(results["nulls"])
+display(results["nulls_per_row"])
+total_nulls = int(results["dimensions"].iloc[0]["celdas_nulas"])
+display(Markdown(
+    f"El DataFrame contiene **{total_nulls:,}** celdas nulas. "
+    "Evidencias: `outputs/tables/01_valores_nulos.csv`, "
+    "`outputs/tables/01_nulos_por_fila.csv` y "
+    "`outputs/figures/01_valores_nulos.png`."
+))
+display(Image(filename=str(FIGURES_DIR / "01_valores_nulos.png")))
+```
+
+Los nulos se reportan sin imputación ni sustitución.
+
+## 10. Duplicados
+
+```{python}
+#| label: duplicados
+display(results["duplicate_summary"])
+display(results["duplicate_examples"])
+duplicate_count = int(results["duplicate_summary"].iloc[0]["filas_duplicadas_exactas"])
+display(Markdown(
+    f"Se identificaron **{duplicate_count:,}** filas pertenecientes a duplicados exactos. "
+    "Evidencias: `outputs/tables/01_resumen_duplicados.csv` y "
+    "`outputs/tables/01_ejemplos_duplicados.csv`."
+))
+```
+
+Los duplicados no fueron eliminados y deberán revisarse en la etapa 02.
+
+## 11. Identificadores candidatos
+
+```{python}
+#| label: identificadores-candidatos
+display(results["identifiers"])
+display(Markdown(
+    f"Las reglas programadas propusieron **{len(results['identifiers']):,}** "
+    "columnas candidatas. Evidencia: "
+    "`outputs/tables/01_identificadores_candidatos.csv`."
+))
+```
+
+La clasificación es una alerta preliminar y requiere revisión humana.
+
+## 12. Columnas vacías y constantes
+
+```{python}
+#| label: columnas-vacias-constantes
+empty_constants = results["empty_constants"]
+display(empty_constants)
+flagged_columns = int(
+    (
+        empty_constants["completamente_vacia"]
+        | empty_constants["unico_valor_no_nulo"]
+        | empty_constants["mas_95_porcentaje_mismo_valor"]
+    ).sum()
+)
+display(Markdown(
+    f"Se marcaron **{flagged_columns:,}** columnas por vacío, constancia o dominancia. "
+    "Evidencia: `outputs/tables/01_columnas_vacias_constantes.csv`."
+))
+```
+
+Ninguna columna fue eliminada.
+
+## 13. Problemas de texto
+
+```{python}
+#| label: problemas-texto
+display(results["text_problems"])
+display(results["textual_nulls"])
+textual_null_count = (
+    int(results["textual_nulls"]["cantidad"].sum())
+    if "cantidad" in results["textual_nulls"]
+    else 0
+)
+display(Markdown(
+    f"Se detectaron **{textual_null_count:,}** apariciones de marcadores textuales "
+    "de posibles nulos. Evidencias: `outputs/tables/01_problemas_texto.csv` y "
+    "`outputs/tables/01_nulos_representados_como_texto.csv`."
+))
+```
+
+Los textos se inspeccionaron, pero no fueron recortados, sustituidos ni consolidados.
+
+## 14. Variables categóricas
+
+```{python}
+#| label: variables-categoricas
+display(results["category_summary"])
+display(results["category_frequencies"])
+display(results["category_equivalences"])
+display(Markdown(
+    f"Se resumieron **{len(results['category_summary']):,}** columnas de cardinalidad "
+    "razonable. Evidencias: `outputs/tables/01_resumen_categorias.csv`, "
+    "`outputs/tables/01_frecuencias_categorias.csv` y "
+    "`outputs/tables/01_posibles_categorias_equivalentes.csv`."
+))
+```
+
+Las equivalencias son propuestas mecánicas; ninguna categoría fue reemplazada.
+
+## 15. Variables numéricas
+
+```{python}
+#| label: variables-numericas
+display(results["numeric_summary"])
+display(results["numeric_outliers"])
+display(Markdown(
+    f"Se calcularon estadísticas para **{len(results['numeric_summary']):,}** columnas "
+    "numéricas. Evidencias: `outputs/tables/01_resumen_numericas.csv` y "
+    "`outputs/tables/01_valores_extremos_iqr.csv`."
+))
+```
+
+Los valores extremos se identificaron mediante IQR y no fueron eliminados.
+
+## 16. Columnas candidatas a fecha
+
+```{python}
+#| label: fechas-candidatas
+display(results["date_candidates"])
+display(results["date_results"])
+display(results["date_failures"])
+display(Markdown(
+    f"Se identificaron **{len(results['date_candidates']):,}** candidatas a fecha. "
+    "Evidencias: `outputs/tables/01_columnas_fecha_candidatas.csv`, "
+    "`outputs/tables/01_resultado_conversion_fechas.csv` y "
+    "`outputs/tables/01_fechas_no_convertibles.csv`."
+))
+```
+
+Las conversiones fueron temporales para validación; no reemplazaron columnas originales.
+
+## 17. Consistencia temporal
+
+```{python}
+#| label: consistencia-temporal
+display(results["temporal_summary"])
+display(results["temporal_inconsistencies"])
+display(Markdown(
+    f"Se evaluaron **{len(results['temporal_summary']):,}** pares temporales plausibles "
+    "encontrados por nombre. Evidencias: `outputs/tables/01_consistencia_temporal.csv` "
+    "y `outputs/tables/01_inconsistencias_temporales.csv`."
+))
+```
+
+No se inventaron pares ausentes ni se corrigieron inconsistencias.
+
+## 18. Clasificación preliminar de variables
+
+```{python}
+#| label: clasificacion-variables
+display(results["classification"])
+display(Markdown(
+    f"Se propuso un grupo preliminar para **{len(results['classification']):,}** "
+    "columnas. Evidencia: "
+    "`outputs/tables/01_clasificacion_preliminar_variables.csv`."
+))
+```
+
+La propuesta se basa en reglas de nombre y tipo y debe ser revisada por una persona.
+
+## 19. Memoria y tamaño
+
+```{python}
+#| label: memoria-tamano
+display(results["memory"])
+memory_total = int(
+    results["memory"].loc[
+        results["memory"]["elemento"] == "dataframe_total",
+        "memoria_bytes",
+    ].iloc[0]
+)
+display(Markdown(
+    f"El DataFrame utiliza **{memory_total:,} bytes** según la estimación profunda de pandas. "
+    "Evidencia: `outputs/tables/01_memoria_dataframe.csv`."
+))
+```
+
+La tabla compara memoria, tamaño del Excel y tamaño de la salida Parquet.
+
+## 20. Resumen de validaciones
+
+```{python}
+#| label: resumen-validaciones
+display(results["validation_summary"])
+status_counts = results["validation_summary"]["estado"].value_counts()
+display(status_counts.rename_axis("estado").reset_index(name="cantidad"))
+display(Markdown(
+    "Evidencias: `outputs/tables/01_resumen_validaciones.csv` y "
+    "`outputs/metrics/01_resumen_validaciones.json`."
+))
+```
+
+Los estados y observaciones proceden de condiciones explícitas programadas.
+
+## 21. Evidencias generadas
+
+```{python}
+#| label: evidencias-generadas
+evidence_table = pd.DataFrame(
+    {
+        "ruta": [
+            path.relative_to(source_path.parents[2]).as_posix()
+            for path in results["evidence_paths"]
+        ],
+        "existe": [path.is_file() for path in results["evidence_paths"]],
+        "tamano_bytes": [path.stat().st_size for path in results["evidence_paths"]],
+    }
+)
+display(evidence_table)
+display(Markdown(
+    f"Se registraron **{len(evidence_table):,}** archivos de salida y "
+    f"**{int(evidence_table['existe'].sum()):,}** existen al finalizar la etapa."
+))
+```
+
+La salida principal es `data/interim/01_censo_identificado.parquet`; los metadatos están en `outputs/metrics/01_metadatos_ingesta.json`.
+
+## 22. Aspectos que deberán tratarse en la etapa 02
+
+```{python}
+#| label: pendientes-etapa-02
+pending = results["validation_summary"].loc[
+    results["validation_summary"]["estado"].ne("OK"),
+    ["validacion", "estado", "observacion_automatica"],
+]
+display(pending)
+display(Markdown(
+    f"Quedaron **{len(pending):,}** grupos de validación con advertencias o revisión "
+    "requerida. La etapa 02 deberá decidir reglas de tratamiento sin alterar el Excel original."
+))
+```
+
+Las decisiones de limpieza quedan deliberadamente fuera de esta etapa.
+
+## 23. Conclusiones de la etapa
+
+```{python}
+#| label: conclusiones-etapa-01
+metadata = results["metadata"]
+display(Markdown(
+    f"La etapa identificó **{metadata['numero_registros']:,} registros** y "
+    f"**{metadata['numero_columnas']:,} columnas** de la hoja `CENSO`. "
+    f"Se conservaron **{metadata['numero_total_nulos']:,} valores nulos** y "
+    f"**{metadata['numero_duplicados_exactos']:,} filas pertenecientes a duplicados exactos** "
+    "sin aplicar correcciones. Las conclusiones posteriores deberán basarse en las evidencias "
+    "generadas y en decisiones explícitas de la etapa 02."
+))
+```
+
+La huella SHA-256 y las rutas de salida permiten identificar la versión analizada y auditar la ejecución.
