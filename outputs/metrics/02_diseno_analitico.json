@@ -1,0 +1,40 @@
+{
+  "filas": 42537,
+  "columnas_iniciales": 40,
+  "columnas_para_calidad": [
+    "triage",
+    "edad",
+    "afiliacion",
+    "especialidades_tratantes",
+    "sala_observacion",
+    "cama",
+    "fecha_ingreso",
+    "tiempo_en_ingreso",
+    "fecha_conducta",
+    "conducta",
+    "total_en_salida",
+    "fecha_salida"
+  ],
+  "predictores_modelo_a": [
+    "triage",
+    "edad",
+    "afiliacion",
+    "fecha_ingreso"
+  ],
+  "predictores_modelo_b": [
+    "triage",
+    "edad",
+    "afiliacion",
+    "especialidades_tratantes",
+    "sala_observacion",
+    "cama",
+    "fecha_ingreso",
+    "tiempo_en_ingreso",
+    "fecha_conducta",
+    "conducta"
+  ],
+  "controles_calidad": [
+    "fecha_salida",
+    "total_en_salida"
+  ]
+}

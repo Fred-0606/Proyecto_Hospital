@@ -1,0 +1,237 @@
+---
+title: "Etapa 02 — Diseño analítico y selección"
+subtitle: "Qué se predice, cuándo se predice y qué información puede utilizarse"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+Antes de limpiar o imputar una variable es necesario establecer si realmente podrá participar en alguno de los modelos. Esta etapa define los dos problemas predictivos, fija sus instantes de uso y construye una matriz de selección para las 40 columnas originales. Así se evita invertir trabajo en información sensible, tardía, redundante o ajena al objetivo.
+
+::: {.callout-important title="Regla temporal"}
+Una variable solo puede ser predictora si su valor está disponible, con la misma definición, en el instante exacto en que se solicita la predicción.
+:::
+
+## Los dos problemas predictivos
+
+El **Modelo A** se utilizará inmediatamente después de finalizar el triage. Estimará si el tiempo comprendido entre `fecha_ingreso` y `fecha_conducta` superará seis horas.
+
+El **Modelo B** se utilizará inmediatamente después de registrar simultáneamente `conducta` y `fecha_conducta`. Estimará si el tiempo comprendido entre `fecha_conducta` y `fecha_salida` superará seis horas.
+
+| Elemento | Modelo A: ingreso | Modelo B: salida |
+|---|---|---|
+| Instante de predicción | Después del triage | Al registrar la conducta |
+| Inicio del reloj | `fecha_ingreso` | `fecha_conducta` |
+| Fin del reloj | `fecha_conducta` | `fecha_salida` |
+| Objetivo binario | Tiempo A >= 6 horas | Tiempo B >= 6 horas |
+
+## Carga de la fuente validada
+
+El siguiente bloque lee el artefacto de la etapa 01. La ejecución se detiene con una instrucción clara si todavía no ha sido producido.
+
+```{python}
+#| label: setup-etapa-02
+import warnings
+
+from IPython.display import Markdown, display
+import pandas as pd
+from sklearn.feature_selection import VarianceThreshold
+
+from src.analytical_design import (
+    STAGE_01_INPUT_PATH,
+    materialize_analytical_design,
+    run_stage_02,
+)
+from src.cleaning import encode_columns_for_variance_threshold
+from src.data_io import require_file
+
+require_file(
+    STAGE_01_INPUT_PATH,
+    "Ejecute primero la etapa 01 para generar 01_censo_identificado.parquet.",
+)
+source_dataframe = pd.read_parquet(STAGE_01_INPUT_PATH)
+```
+
+## Filtrado estructural con `VarianceThreshold`
+
+Las columnas constantes no distinguen pacientes y, por tanto, no pueden aportar capacidad predictiva. Para documentar esta regla con el método solicitado, se codifican temporalmente las columnas de texto y se ajusta explícitamente `VarianceThreshold` de scikit-learn con umbral cero. La codificación se usa solo para detectar constancia; los valores originales no se modifican.
+
+```{python}
+#| label: variance-threshold-visible
+variance_matrix = encode_columns_for_variance_threshold(source_dataframe)
+variance_selector = VarianceThreshold(threshold=0.0)
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", RuntimeWarning)
+    variance_selector.fit(variance_matrix)
+
+zero_variance_columns = source_dataframe.columns[
+    ~variance_selector.get_support()
+].tolist()
+display(pd.DataFrame({"columnas_varianza_cero": zero_variance_columns}))
+```
+
+La tabla anterior identifica automáticamente las columnas que no varían. Esta evidencia se incorpora a la matriz de decisiones junto con los criterios clínicos, temporales, éticos y de completitud. `eapb`, aunque podría aportar contexto administrativo, queda fuera porque supera el umbral acordado de 60 % de valores nulos; `afiliacion` permanece como la variable administrativa disponible.
+
+## Predictores autorizados
+
+Para el Modelo A se adopta una selección conservadora: solo se incluyen datos disponibles al terminar el triage. Sala, cama y especialidad se excluyen porque su disponibilidad en ese instante no quedó garantizada.
+
+Para el Modelo B, `sala_observacion` y `cama` pueden conservarse porque están disponibles al registrar la conducta y no se actualizan posteriormente. La disponibilidad temporal de `especialidades_tratantes` se documenta por separado porque el archivo conserva el último valor registrado.
+
+```{python}
+#| label: listas-predictores
+predictors_model_a = [
+    "triage",
+    "edad",
+    "afiliacion",
+    "fecha_ingreso",
+]
+
+predictors_model_b = [
+    "triage",
+    "edad",
+    "afiliacion",
+    "fecha_ingreso",
+    "especialidades_tratantes",
+    "sala_observacion",
+    "cama",
+    "fecha_conducta",
+    "conducta",
+    "tiempo_en_ingreso",
+]
+
+display(pd.DataFrame({"predictores_modelo_a": pd.Series(predictors_model_a)}))
+display(pd.DataFrame({"predictores_modelo_b": pd.Series(predictors_model_b)}))
+```
+
+## Matriz completa de selección
+
+La siguiente matriz asigna una decisión a cada columna original. Además de impedir fugas de información, registra por qué una variable se descarta, de modo que el lector pueda revisar la lógica sin inferirla a partir del código.
+
+```{python}
+#| label: construir-matriz-seleccion
+universal_reasons = {
+    "nombre_paciente": "Dato personal sin valor analítico.",
+    "identificacion": "Identificador consecutivo sin valor predictivo.",
+    "diagnostico": "Diagnóstico definitivo y actualizado; contiene información tardía.",
+    "status": "Estado final o actualizado sin disponibilidad histórica garantizada.",
+    "user": "Usuario/correo: información sensible de operación.",
+    "user_1": "Usuario/correo: información sensible de operación.",
+    "user_2": "Usuario/correo: información sensible de operación.",
+    "observaciones_y_pendientes": "Texto libre con riesgo de fuga de información.",
+    "observaciones_y_pendientes__2": "Texto libre con riesgo de fuga de información.",
+    "ultima_valoracion": "Tiempo intermedio que no corresponde a los objetivos.",
+    "ultima_valoracion_1": "Tiempo intermedio que no corresponde a los objetivos.",
+    "clasificacion": "Clasificación final relacionada directamente con los desenlaces.",
+    "no_modificar": "Campo técnico/sensible sin uso analítico.",
+    "no_modificar_1": "Campo técnico/sensible sin uso analítico.",
+    "no_modificar_2": "Campo técnico/sensible sin uso analítico.",
+    "class": "La inspección manual no encontró información útil.",
+    "2": "Columna estructural sin significado analítico.",
+    "dias": "Campo derivado o técnico sin definición predictiva defendible.",
+    "ingreso_orden_6_hrs": "Indicador derivado del desenlace de ingreso.",
+    "orden_salida_6_hrs": "Indicador derivado del desenlace de salida.",
+    "ingreso_salida_12_hrs": "Indicador posterior que combina ambos procesos.",
+    "estado_salida": "Estado conocido durante o después del proceso de salida.",
+}
+
+specific_reasons = {
+    "especialidades_tratantes": "No garantizada al predecir A; disponible con cautela para B.",
+    "sala_observacion": "No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.",
+    "cama": "No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.",
+    "fecha_conducta": "Fin del objetivo A; instante conocido y transformable para B.",
+    "conducta": "Desconocida para A; se registra en el instante de predicción B.",
+    "tiempo_en_ingreso": "Desenlace continuo de A; historia ya finalizada para B.",
+    "meta_estancia": "Umbral redundante con la definición del objetivo A.",
+    "dd_hh": "Representación redundante del tiempo de ingreso.",
+    "clase_ingreso": "Categoriza directamente el desenlace A.",
+    "fecha_limite_salida_servicio": "Equivale a fecha_conducta más el umbral de seis horas.",
+    "total_en_salida": "Duración original de B; solo control de calidad.",
+    "clase_salida": "Categoriza directamente el desenlace B.",
+    "fecha_salida": "Extremo final del objetivo B; solo fuente del objetivo.",
+}
+
+selection_rows = []
+high_null_columns = source_dataframe.columns[
+    source_dataframe.isna().mean().gt(0.60)
+].tolist()
+for column in source_dataframe.columns:
+    if column in zero_variance_columns:
+        model_a = model_b = "excluir"
+        role = "descartada"
+        justification = "Varianza cero detectada con VarianceThreshold."
+    elif column in high_null_columns:
+        model_a = model_b = "excluir"
+        role = "descartada"
+        justification = "Más del 60 % de sus valores están ausentes."
+    elif column in universal_reasons:
+        model_a = model_b = "excluir"
+        role = "descartada"
+        justification = universal_reasons[column]
+    else:
+        model_a = "incluir" if column in predictors_model_a else "excluir"
+        model_b = "incluir" if column in predictors_model_b else "excluir"
+        role = "predictora" if "incluir" in (model_a, model_b) else "control_objetivo"
+        justification = specific_reasons.get(
+            column,
+            "Disponible antes de ambos instantes de predicción.",
+        )
+    selection_rows.append(
+        {
+            "columna": column,
+            "modelo_a": model_a,
+            "modelo_b": model_b,
+            "rol": role,
+            "justificacion": justification,
+        }
+    )
+
+selection_table = pd.DataFrame(selection_rows)
+display(selection_table)
+```
+
+`tiempo_en_ingreso` y `total_en_salida` no serán fuentes oficiales de los objetivos: se conservan como controles de coherencia. La versión original `tiempo_en_ingreso` tampoco entrará directamente en los modelos; para el Modelo B se utilizará su versión oficial `duracion_ingreso_calculada`, obtenida desde `fecha_ingreso` y `fecha_conducta`, porque el Tiempo A ya finalizó y es conocido al registrar la conducta. `total_en_salida` nunca será predictor. Para el Modelo A, `fecha_conducta` participa exclusivamente en el cálculo del objetivo y nunca entra en `X`.
+
+## Materialización de la vista seleccionada
+
+El bloque final guarda una tabla reducida con la unión de predictores, fuentes de objetivos y controles estrictamente necesarios. No se imputan valores ni se eliminan filas en esta etapa.
+
+```{python}
+#| label: ejecutar-seleccion-analitica
+control_columns = ["fecha_salida", "total_en_salida"]
+
+# Primero se construye en memoria la vista esperada. Esta llamada solo selecciona
+# columnas; todavía no escribe ningún artefacto.
+expected_dataframe, expected_metrics = materialize_analytical_design(
+    source_dataframe,
+    selection_table,
+    control_columns,
+)
+
+# La función orquestadora repite la selección y persiste Parquet, CSV y JSON.
+results = run_stage_02(selection_table, control_columns)
+selected_dataframe = results["dataframe"]
+metrics = results["metrics"]
+
+# Si la ruta visible y la ruta persistida difieren, la etapa se detiene.
+pd.testing.assert_frame_equal(selected_dataframe, expected_dataframe)
+assert metrics == expected_metrics
+
+display(selected_dataframe.head())
+display(Markdown(
+    f"La vista para control de calidad conserva **{metrics['filas']:,} filas** y "
+    f"**{selected_dataframe.shape[1]} columnas** de las 40 originales."
+))
+```
+
+El artefacto `data/interim/02_variables_seleccionadas.parquet` será la única entrada de la etapa 03. La matriz completa queda en `outputs/tables/02_matriz_seleccion_variables.csv` y permite auditar tanto inclusiones como exclusiones.

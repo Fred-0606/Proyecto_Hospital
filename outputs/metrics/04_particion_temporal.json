@@ -1,0 +1,159 @@
+{
+  "fecha_inicio_prueba": "2026-03-01T00:00:00",
+  "regla_particion": "desarrollo < fecha_inicio_prueba; prueba >= fecha_inicio_prueba",
+  "estadisticas_objetivo_prueba_ocultas": true,
+  "advertencia_auditoria": "La prevalencia de prueba fue observada en ejecuciones anteriores, pero no se utilizó para ajustar transformadores, modelos o umbrales.",
+  "predictores_modelo_a": [
+    "edad",
+    "volumen_ingresos_3h",
+    "volumen_ingresos_6h",
+    "volumen_ingresos_24h",
+    "triage",
+    "afiliacion",
+    "hora_ingreso",
+    "dia_semana_ingreso",
+    "mes_ingreso",
+    "fin_semana_ingreso"
+  ],
+  "predictores_modelo_b": [
+    "edad",
+    "pacientes_activos_en_ingreso",
+    "pacientes_pendientes_de_salida",
+    "duracion_ingreso_calculada",
+    "triage",
+    "afiliacion",
+    "sala_observacion",
+    "grupo_cama",
+    "conducta",
+    "hora_ingreso",
+    "dia_semana_ingreso",
+    "mes_ingreso",
+    "fin_semana_ingreso",
+    "hora_conducta",
+    "dia_semana_conducta",
+    "mes_conducta",
+    "fin_semana_conducta",
+    "especialidades_tratantes"
+  ],
+  "pliegues_modelo_a": [
+    {
+      "pliegue": 1,
+      "entrenamiento_registros": 14254,
+      "entrenamiento_inicio": "2024-09-09T09:57:00",
+      "entrenamiento_fin": "2025-04-30T22:43:00",
+      "entrenamiento_positivos_pct": 48.8,
+      "validacion_registros": 4049,
+      "validacion_inicio": "2025-05-01T00:25:00",
+      "validacion_fin": "2025-06-30T23:35:00",
+      "validacion_positivos_pct": 45.99
+    },
+    {
+      "pliegue": 2,
+      "entrenamiento_registros": 18303,
+      "entrenamiento_inicio": "2024-09-09T09:57:00",
+      "entrenamiento_fin": "2025-06-30T23:35:00",
+      "entrenamiento_positivos_pct": 48.18,
+      "validacion_registros": 4263,
+      "validacion_inicio": "2025-07-01T00:00:00",
+      "validacion_fin": "2025-08-31T23:59:00",
+      "validacion_positivos_pct": 51.16
+    },
+    {
+      "pliegue": 3,
+      "entrenamiento_registros": 22566,
+      "entrenamiento_inicio": "2024-09-09T09:57:00",
+      "entrenamiento_fin": "2025-08-31T23:59:00",
+      "entrenamiento_positivos_pct": 48.74,
+      "validacion_registros": 4195,
+      "validacion_inicio": "2025-09-01T00:03:00",
+      "validacion_fin": "2025-10-31T23:33:00",
+      "validacion_positivos_pct": 57.85
+    },
+    {
+      "pliegue": 4,
+      "entrenamiento_registros": 26761,
+      "entrenamiento_inicio": "2024-09-09T09:57:00",
+      "entrenamiento_fin": "2025-10-31T23:33:00",
+      "entrenamiento_positivos_pct": 50.17,
+      "validacion_registros": 3709,
+      "validacion_inicio": "2025-11-01T00:24:00",
+      "validacion_fin": "2025-12-31T23:46:00",
+      "validacion_positivos_pct": 56.21
+    },
+    {
+      "pliegue": 5,
+      "entrenamiento_registros": 30470,
+      "entrenamiento_inicio": "2024-09-09T09:57:00",
+      "entrenamiento_fin": "2025-12-31T23:46:00",
+      "entrenamiento_positivos_pct": 50.91,
+      "validacion_registros": 3920,
+      "validacion_inicio": "2026-01-01T01:36:00",
+      "validacion_fin": "2026-02-28T23:58:00",
+      "validacion_positivos_pct": 56.84
+    }
+  ],
+  "pliegues_modelo_b": [
+    {
+      "pliegue": 1,
+      "entrenamiento_registros": 14249,
+      "entrenamiento_inicio": "2024-09-09T12:36:00",
+      "entrenamiento_fin": "2025-04-30T23:40:00",
+      "entrenamiento_positivos_pct": 26.18,
+      "validacion_registros": 4052,
+      "validacion_inicio": "2025-05-01T00:10:00",
+      "validacion_fin": "2025-06-30T23:53:00",
+      "validacion_positivos_pct": 41.93
+    },
+    {
+      "pliegue": 2,
+      "entrenamiento_registros": 18301,
+      "entrenamiento_inicio": "2024-09-09T12:36:00",
+      "entrenamiento_fin": "2025-06-30T23:53:00",
+      "entrenamiento_positivos_pct": 29.67,
+      "validacion_registros": 4250,
+      "validacion_inicio": "2025-07-01T00:08:00",
+      "validacion_fin": "2025-08-31T23:07:00",
+      "validacion_positivos_pct": 34.28
+    },
+    {
+      "pliegue": 3,
+      "entrenamiento_registros": 22551,
+      "entrenamiento_inicio": "2024-09-09T12:36:00",
+      "entrenamiento_fin": "2025-08-31T23:07:00",
+      "entrenamiento_positivos_pct": 30.54,
+      "validacion_registros": 4212,
+      "validacion_inicio": "2025-09-01T00:33:00",
+      "validacion_fin": "2025-10-31T23:31:00",
+      "validacion_positivos_pct": 35.07
+    },
+    {
+      "pliegue": 4,
+      "entrenamiento_registros": 26763,
+      "entrenamiento_inicio": "2024-09-09T12:36:00",
+      "entrenamiento_fin": "2025-10-31T23:31:00",
+      "entrenamiento_positivos_pct": 31.25,
+      "validacion_registros": 3720,
+      "validacion_inicio": "2025-11-01T01:03:00",
+      "validacion_fin": "2025-12-31T22:54:00",
+      "validacion_positivos_pct": 23.23
+    },
+    {
+      "pliegue": 5,
+      "entrenamiento_registros": 30483,
+      "entrenamiento_inicio": "2024-09-09T12:36:00",
+      "entrenamiento_fin": "2025-12-31T22:54:00",
+      "entrenamiento_positivos_pct": 30.27,
+      "validacion_registros": 3905,
+      "validacion_inicio": "2026-01-01T00:21:00",
+      "validacion_fin": "2026-02-28T23:57:00",
+      "validacion_positivos_pct": 30.7
+    }
+  ],
+  "artefactos": [
+    "data/processed/04_ingreso_desarrollo.parquet",
+    "data/processed/04_ingreso_prueba.parquet",
+    "data/processed/04_salida_desarrollo.parquet",
+    "data/processed/04_salida_prueba.parquet",
+    "outputs/tables/04_resumen_particiones.csv"
+  ]
+}

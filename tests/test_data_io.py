@@ -1,6 +1,7 @@
 """Prueba la ingesta de CENSO sin utilizar el archivo hospitalario."""
 
 from pathlib import Path
+from typing import Self
 
 import pandas as pd
 import pytest
@@ -15,7 +16,7 @@ class FakeExcelFile:
         """Inicializa la lista simulada de hojas."""
         self.sheet_names = sheet_names
 
-    def __enter__(self) -> "FakeExcelFile":
+    def __enter__(self) -> Self:
         """Abre el contexto simulado."""
         return self
 
@@ -92,6 +93,28 @@ def test_normalize_columns_and_resolve_duplicates() -> None:
         "simbolo": "Símbolo #%",
     }
     assert normalized.iloc[0].tolist() == [1, 2, 3]
+
+
+def test_harmonize_raw_source_columns_preserves_values() -> None:
+    """Los encabezados técnicos del libro nuevo deben conservar el esquema previo."""
+    source = pd.DataFrame(
+        {
+            "Date": ["inicio"],
+            "NO MODIFICAR.1": ["06:00"],
+            "NO MODIFICAR.4": ["correo@hospital.org"],
+            ".": ["salida"],
+        }
+    )
+
+    result = data_io.harmonize_source_columns(source)
+
+    assert result.columns.tolist() == [
+        "FECHA INGRESO",
+        "TOTAL EN SALIDA",
+        "NO MODIFICAR 2",
+        "FECHA SALIDA",
+    ]
+    assert result.iloc[0].tolist() == source.iloc[0].tolist()
 
 
 def test_copy_dataframe_is_independent() -> None:

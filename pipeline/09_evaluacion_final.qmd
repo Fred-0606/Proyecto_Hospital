@@ -1,0 +1,90 @@
+﻿---
+title: "Etapa 09 — Evaluación final"
+subtitle: "Prueba independiente para ingreso y salida"
+format: html
+execute:
+  enabled: false
+---
+
+## Propósito de la etapa
+
+Evaluar una sola vez los modelos seleccionados sobre las particiones de prueba correspondientes.
+
+Hasta esta etapa todas las decisiones se han tomado con entrenamiento y validación. La prueba representa el primer contacto con casos completamente reservados y proporciona la estimación más honesta de desempeño futuro disponible en el proyecto.
+
+## Configuración congelada
+
+Antes de habilitar esta etapa se debe validar
+`config/modelos_congelados.yml`. Ese manifiesto fija los predictores, modelos,
+hiperparámetros, umbrales, semilla, corte temporal y huellas SHA-256 de los
+artefactos de selección. Si cualquiera cambia, la evaluación debe detenerse y
+no abrir la prueba.
+
+```python
+from src.model_freeze import validate_frozen_configuration
+
+configuracion_congelada = validate_frozen_configuration()
+```
+
+El manifiesto registra `prueba_final_abierta: false`. Este valor solo podrá
+cambiarse como parte de la ejecución controlada y única de esta etapa.
+
+## Reporte obligatorio por tarea
+
+La tabla siguiente anticipa la estructura del reporte. Mantener columnas paralelas facilitará comparar los dos procesos sin confundir objetivos ni momentos de predicción.
+
+| Dimensión | Modelo de ingreso | Modelo de salida |
+|---|---|---|
+| Objetivo | `estancia_prolongada_a` | `estancia_prolongada_b` |
+| Momento de predicción | Después del triage | Al registrar la conducta |
+| Prueba | Casos futuros reservados | Casos futuros reservados |
+| Métricas | Recall, precision, F1, ROC-AUC y PR-AUC | Recall, precision, F1, ROC-AUC y PR-AUC |
+
+## Controles
+
+La evaluación final seguirá controles estrictos para que la prueba no se convierta en otra partición de ajuste:
+
+- La prueba no participa en selección ni transformación.
+- Se reportan intervalos de incertidumbre cuando sea viable.
+- Se revisan errores por triage, edad, afiliación y turno sin revelar personas.
+- Ninguna mejora se interpreta como causalidad.
+
+## Secuencia transparente de evaluación
+
+La prueba se abrirá una sola vez después de fijar el algoritmo, sus
+hiperparámetros y el umbral. El documento mostrará separadamente el ajuste final,
+la generación de probabilidades y el cálculo de cada métrica:
+
+```python
+# El desarrollo completo es la única entrada de fit().
+selected_pipeline.fit(
+    development[predictors],
+    development[target],
+)
+
+# La prueba solo se transforma y predice.
+test_probability = selected_pipeline.predict_proba(
+    test[predictors]
+)[:, 1]
+test_prediction = (test_probability >= selected_threshold).astype("int8")
+
+test_metrics = {
+    "recall": recall_score(test[target], test_prediction),
+    "precision": precision_score(test[target], test_prediction),
+    "f1": f1_score(test[target], test_prediction),
+    "roc_auc": roc_auc_score(test[target], test_probability),
+    "pr_auc": average_precision_score(test[target], test_probability),
+    "matriz_confusion": confusion_matrix(test[target], test_prediction),
+}
+```
+
+Cuando se implemente, las variables del bloque serán objetos reales creados en
+las etapas anteriores. El código no se ejecuta todavía y, por tanto, no anticipa
+resultados de prueba.
+
+## Resultado esperado
+
+Dos evaluaciones finales claramente separadas y una valoración de utilidad operativa para cada punto de decisión.
+
+Además de las métricas globales, se explicará qué tipos de errores son más frecuentes y qué consecuencias tendría cada uno en el flujo de urgencias.
+

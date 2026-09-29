@@ -38,6 +38,7 @@ isoduration==20.11.0
 jedi==0.20.0
 Jinja2==3.1.6
 joblib==1.5.3
+lxml==6.1.1
 json5==0.15.0
 jsonpointer==3.1.1
 jsonschema==4.26.0
@@ -91,6 +92,7 @@ pydantic_core==2.46.4
 Pygments==2.20.0
 pyparsing==3.3.2
 pytest==9.1.1
+python-docx==1.2.0
 python-dateutil==2.9.0.post0
 python-json-logger==4.1.0
 pywinpty==3.0.5
@@ -126,3 +128,4 @@ webcolors==25.10.0
 webencodings==0.5.1
 websocket-client==1.9.0
 widgetsnbextension==4.0.15
+xgboost==3.4.1

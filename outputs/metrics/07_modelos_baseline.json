@@ -1,0 +1,24 @@
+{
+  "prueba_final_utilizada": false,
+  "pliegues_temporales": 5,
+  "umbral_clasificacion": 0.5,
+  "referencia_ingenua": {
+    "strategy": "most_frequent"
+  },
+  "regresion_logistica": {
+    "penalty": "l2",
+    "solver": "saga",
+    "C": 1.0,
+    "l1_ratio": 0.0,
+    "tol": 0.001,
+    "max_iter": 1000,
+    "class_weight": null,
+    "random_state": 42
+  },
+  "artefactos": [
+    "07_metricas_baseline_por_pliegue.csv",
+    "07_resumen_baseline.csv",
+    "07_matrices_confusion_baseline.png",
+    "07_comparacion_metricas_baseline.png"
+  ]
+}

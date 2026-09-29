@@ -1,0 +1,36 @@
+{
+  "prueba_utilizada": false,
+  "predictores_modelo_a": [
+    "edad",
+    "volumen_ingresos_3h",
+    "volumen_ingresos_6h",
+    "volumen_ingresos_24h",
+    "triage",
+    "afiliacion",
+    "hora_ingreso",
+    "dia_semana_ingreso",
+    "mes_ingreso",
+    "fin_semana_ingreso"
+  ],
+  "predictores_modelo_b": [
+    "edad",
+    "pacientes_activos_en_ingreso",
+    "pacientes_pendientes_de_salida",
+    "duracion_ingreso_calculada",
+    "triage",
+    "afiliacion",
+    "sala_observacion",
+    "grupo_cama",
+    "conducta",
+    "hora_ingreso",
+    "dia_semana_ingreso",
+    "mes_ingreso",
+    "fin_semana_ingreso",
+    "hora_conducta",
+    "dia_semana_conducta",
+    "mes_conducta",
+    "fin_semana_conducta",
+    "especialidades_tratantes"
+  ],
+  "ajuste_transformadores": "solo_entrenamiento_de_cada_pliegue"
+}

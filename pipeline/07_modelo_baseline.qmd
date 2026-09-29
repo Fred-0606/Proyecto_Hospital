@@ -1,0 +1,358 @@
+﻿---
+title: "Etapa 07 — Modelos baseline"
+subtitle: "Referencia mayoritaria y regresión logística L2"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+Establecer por separado el desempeño mínimo para el Modelo A —ingreso— y el
+Modelo B —salida— sin consultar las particiones de prueba final. Los mismos cinco
+pliegues temporales de la etapa 04 se utilizan para entrenamiento y validación.
+
+Se comparan dos referencias con funciones distintas:
+
+1. **Referencia ingenua de clase mayoritaria:** siempre predice la clase más
+   frecuente del entrenamiento del pliegue.
+2. **Baseline predictivo principal:** regresión logística con regularización
+   **L2**, que sí aprende relaciones entre los predictores y el objetivo.
+
+## Especificación de la regularización
+
+La regularización L2 penaliza la magnitud cuadrática de los coeficientes:
+
+$$
+\operatorname{penalización} = \sum_j \beta_j^2
+$$
+
+L2 reduce coeficientes extremos sin eliminar predictores y los estabiliza cuando
+varias columnas one-hot contienen información relacionada. Se adopta como baseline
+porque ofrece una referencia simple y estable, sin introducir el hiperparámetro
+adicional de mezcla requerido por Elastic Net.
+
+La configuración completa se define antes de observar los resultados:
+
+| Parámetro | Valor | Interpretación |
+|---|---:|---|
+| Regularización | L2 | Penalización cuadrática de los coeficientes |
+| `l1_ratio` | 0 | Equivalente a penalización L2 pura |
+| `C` | 1,0 | Intensidad estándar; menor `C` implicaría mayor penalización |
+| `solver` | `saga` | Algoritmo compatible con L2 y matrices dispersas |
+| `tol` | 0,001 | Criterio explícito para detener la optimización al converger |
+| `max_iter` | 1.000 | Límite de seguridad; alcanzar este valor indica falta de convergencia |
+| `class_weight` | Ninguno | No se alteran artificialmente las proporciones de clase |
+| Umbral | 0,5 | Probabilidad mínima para predecir la clase positiva |
+| `random_state` | 42 | Reproducibilidad |
+
+No se realiza búsqueda de `C`, `l1_ratio`, pesos de clase ni umbral. Optimizar
+estos valores con validación convertiría el procedimiento en ajuste de
+hiperparámetros y correspondería a la etapa 08, no a un baseline preespecificado.
+
+## Preparación de los datos
+
+El siguiente bloque lee exclusivamente los conjuntos de desarrollo. Los archivos
+de prueba `04_ingreso_prueba.parquet` y `04_salida_prueba.parquet` no se importan
+ni participan en esta etapa.
+
+```{python}
+#| label: preparar-etapa-07
+from IPython.display import Markdown, display
+import pandas as pd
+from sklearn.base import clone
+from sklearn.dummy import DummyClassifier
+
+from src.data_io import project_relative_path, require_file
+from src.paths import METRICS_DIR
+from src.models import (
+    CLASSIFICATION_THRESHOLD,
+    L2_C,
+    L2_RATIO,
+    L2_TOLERANCE,
+    STAGE_07_CONFUSION_FIGURE_PATH,
+    STAGE_07_FOLDS_PATH,
+    STAGE_07_METRICS_PATH,
+    STAGE_07_SUMMARY_PATH,
+    STAGE_07_METRICS_FIGURE_PATH,
+    build_l2_logistic_baseline,
+    calculate_binary_metrics,
+    finalize_stage_07_results,
+)
+from src.preprocessing import (
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_A_PREDICTORS,
+    MODEL_A_TARGET,
+    MODEL_B_DEVELOPMENT_PATH,
+    MODEL_B_PREDICTORS,
+    MODEL_B_TARGET,
+    build_expanding_time_splits,
+    build_model_a_preprocessor,
+    build_model_b_preprocessor,
+)
+
+require_file(
+    METRICS_DIR / "06_feature_engineering_preprocesamiento.json",
+    "Ejecute primero la etapa 06 de feature engineering y preprocesamiento.",
+)
+require_file(
+    MODEL_A_DEVELOPMENT_PATH,
+    "Ejecute primero la etapa 04 para generar 04_ingreso_desarrollo.parquet.",
+)
+require_file(
+    MODEL_B_DEVELOPMENT_PATH,
+    "Ejecute primero la etapa 04 para generar 04_salida_desarrollo.parquet.",
+)
+
+model_a_development = pd.read_parquet(MODEL_A_DEVELOPMENT_PATH)
+model_b_development = pd.read_parquet(MODEL_B_DEVELOPMENT_PATH)
+
+display(pd.DataFrame({
+    "modelo": ["A — ingreso", "B — salida"],
+    "registros_de_desarrollo": [
+        len(model_a_development),
+        len(model_b_development),
+    ],
+}))
+```
+
+## Un pliegue mostrado paso a paso
+
+Para evitar que el entrenamiento sea una caja negra, se abre el primer pliegue
+del Modelo A. Los índices proceden de la etapa 04: primero se extraen las filas de
+entrenamiento y validación, luego se ajusta cada baseline y finalmente se generan
+las probabilidades de validación.
+
+```python
+model_a_splits = build_expanding_time_splits(
+    model_a_development,
+    MODEL_A_TARGET,
+)
+train_indices, validation_indices = model_a_splits[0]
+
+train = model_a_development.iloc[train_indices]
+validation = model_a_development.iloc[validation_indices]
+
+X_train = train[MODEL_A_PREDICTORS]
+y_train = train[MODEL_A_TARGET]
+X_validation = validation[MODEL_A_PREDICTORS]
+y_validation = validation[MODEL_A_TARGET]
+
+# Referencia ingenua: aprende únicamente qué clase es más frecuente.
+majority_reference = DummyClassifier(strategy="most_frequent")
+majority_reference.fit(X_train, y_train)
+majority_probability = majority_reference.predict_proba(X_validation)[:, 1]
+
+# Baseline principal: preprocesamiento y regresión se ajustan juntos.
+l2_baseline = build_l2_logistic_baseline(
+    build_model_a_preprocessor()
+)
+l2_baseline.fit(X_train, y_train)
+l2_probability = l2_baseline.predict_proba(X_validation)[:, 1]
+
+first_fold_metrics = pd.DataFrame([
+    {
+        "baseline": "clase_mayoritaria",
+        **calculate_binary_metrics(y_validation, majority_probability),
+    },
+    {
+        "baseline": "regresion_logistica_l2",
+        **calculate_binary_metrics(y_validation, l2_probability),
+    },
+])
+display(first_fold_metrics)
+```
+
+Este bloque muestra literalmente las operaciones utilizadas, pero no se ejecuta
+una segunda vez durante el render. La ejecución completa siguiente ya incluye el
+primer pliegue; repetir su ajuste solo para demostrarlo duplicaría innecesariamente
+el tiempo de cómputo.
+
+La referencia mayoritaria recibe `X_train` por compatibilidad con la interfaz de
+scikit-learn, pero no utiliza sus columnas. La regresión logística sí transforma
+los predictores, estima sus coeficientes con `fit()` y produce una probabilidad
+para cada registro mediante `predict_proba()`.
+
+## Ejecución explícita de los cinco pliegues
+
+El bloque siguiente contiene el flujo principal completo. Para cada tarea se
+construyen los cinco cortes temporales; en cada uno se separan entrenamiento y
+validación antes de crear y ajustar los dos baselines. El preprocesamiento y la
+regresión forman un solo pipeline, de modo que medianas, categorías y vocabulario
+se aprenden exclusivamente durante `fit(X_train, y_train)`.
+
+```{python}
+#| label: ejecutar-baselines-etapa-07
+model_configurations = {
+    "A": {
+        "data": model_a_development,
+        "predictors": MODEL_A_PREDICTORS,
+        "target": MODEL_A_TARGET,
+        "preprocessor_builder": build_model_a_preprocessor,
+    },
+    "B": {
+        "data": model_b_development,
+        "predictors": MODEL_B_PREDICTORS,
+        "target": MODEL_B_TARGET,
+        "preprocessor_builder": build_model_b_preprocessor,
+    },
+}
+
+result_rows = []
+for model_name, configuration in model_configurations.items():
+    development = configuration["data"]
+    predictors = configuration["predictors"]
+    target = configuration["target"]
+    temporal_splits = build_expanding_time_splits(development, target)
+
+    for fold_number, (train_indices, validation_indices) in enumerate(
+        temporal_splits,
+        start=1,
+    ):
+        train = development.iloc[train_indices]
+        validation = development.iloc[validation_indices]
+        X_train = train[predictors]
+        y_train = train[target]
+        X_validation = validation[predictors]
+        y_validation = validation[target]
+
+        baselines = {
+            "clase_mayoritaria": DummyClassifier(strategy="most_frequent"),
+            "regresion_logistica_l2": build_l2_logistic_baseline(
+                configuration["preprocessor_builder"]()
+            ),
+        }
+
+        for baseline_name, estimator in baselines.items():
+            fitted_estimator = clone(estimator)
+            fitted_estimator.fit(X_train, y_train)
+
+            if baseline_name == "regresion_logistica_l2":
+                classifier = fitted_estimator.named_steps["clasificador"]
+                iterations = int(classifier.n_iter_[0])
+                converged = iterations < classifier.max_iter
+            else:
+                iterations = pd.NA
+                converged = pd.NA
+
+            for partition, features, labels in (
+                ("entrenamiento", X_train, y_train),
+                ("validacion", X_validation, y_validation),
+            ):
+                probabilities = fitted_estimator.predict_proba(features)[:, 1]
+                result_rows.append({
+                    "modelo": model_name,
+                    "baseline": baseline_name,
+                    "pliegue": fold_number,
+                    "particion": partition,
+                    "registros": len(labels),
+                    "prevalencia": float(labels.mean()),
+                    "iteraciones": iterations,
+                    "convergencia_alcanzada": converged,
+                    **calculate_binary_metrics(labels, probabilities),
+                })
+
+fold_metrics = pd.DataFrame(result_rows)
+stage_07 = finalize_stage_07_results(fold_metrics)
+fold_metrics = stage_07["metricas_por_pliegue"]
+summary = stage_07["resumen"]
+
+validation_folds = fold_metrics.loc[
+    fold_metrics["particion"].eq("validacion")
+].copy()
+display(validation_folds.round(4))
+```
+
+## Convergencia
+
+La regresión L2 se considera convergente cuando utiliza menos iteraciones que el
+máximo permitido. Esta comprobación evita presentar coeficientes o métricas de un
+ajuste que terminó únicamente por alcanzar el límite.
+
+```{python}
+#| label: comprobar-convergencia-baseline
+convergence = (
+    fold_metrics.loc[
+        fold_metrics["baseline"].eq("regresion_logistica_l2"),
+        ["modelo", "pliegue", "iteraciones", "convergencia_alcanzada"],
+    ]
+    .drop_duplicates()
+    .reset_index(drop=True)
+)
+assert convergence["convergencia_alcanzada"].all()
+display(convergence)
+```
+
+## Resumen de entrenamiento y validación
+
+Las medias describen el desempeño a través de los cinco pliegues. Entrenamiento
+y validación se mantienen en filas separadas para detectar sobreajuste.
+
+```{python}
+#| label: resumen-metricas-baseline
+display(summary.round(4))
+```
+
+## Representaciones visuales
+
+Las matrices de confusión acumulan los conteos de los cinco bloques de validación,
+que corresponden a periodos consecutivos y no superpuestos. Los diagramas de
+barras comparan las métricas medias de validación bajo el mismo protocolo.
+
+```{python}
+#| label: figuras-resultados-baseline
+#| echo: false
+from IPython.display import Image
+
+display(Image(filename=str(STAGE_07_CONFUSION_FIGURE_PATH)))
+display(Image(filename=str(STAGE_07_METRICS_FIGURE_PATH)))
+```
+
+## Interpretación
+
+La clase mayoritaria permite contextualizar la exactitud, pero no constituye una
+solución útil. En el Modelo B siempre predice la clase negativa y, por ello, su
+recall y F1 para estancias prolongadas son cero. En el Modelo A la clase
+mayoritaria cambia entre algunos bloques acumulativos; esa inestabilidad explica
+por qué el promedio de recall no es necesariamente cero.
+
+La regresión logística L2 supera la referencia ingenua en ROC-AUC y
+PR-AUC para ambos objetivos, lo que demuestra que los predictores contienen señal
+para ordenar casos por riesgo. Sin embargo, con umbral 0,5 el Modelo B obtiene un
+recall de validación bajo: identifica una fracción pequeña de las estancias
+prolongadas, aunque sus probabilidades sí muestran capacidad discriminativa. Esto
+sugiere que la etapa 08 deberá estudiar el umbral y el equilibrio entre recall y
+precision usando únicamente validación, nunca la prueba final.
+
+## Artefactos producidos
+
+```{python}
+#| label: artefactos-etapa-07
+display(pd.DataFrame({
+    "artefacto": [
+        project_relative_path(STAGE_07_FOLDS_PATH),
+        project_relative_path(STAGE_07_SUMMARY_PATH),
+        project_relative_path(STAGE_07_METRICS_PATH),
+        project_relative_path(STAGE_07_CONFUSION_FIGURE_PATH),
+        project_relative_path(STAGE_07_METRICS_FIGURE_PATH),
+    ],
+    "contenido": [
+        "Métricas de entrenamiento y validación por pliegue",
+        "Métricas medias",
+        "Configuración metodológica reproducible",
+        "Matrices de confusión de validación",
+        "Barras comparativas de métricas de validación",
+    ],
+}))
+```
+
+La prueba final continúa cerrada. No se guarda todavía un modelo definitivo,
+porque la selección y cualquier ajuste posterior pertenecen a las etapas 07 y 08.
+

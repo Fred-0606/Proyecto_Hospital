@@ -1,0 +1,379 @@
+---
+title: "Etapa 03 — ETL de transformación y calidad"
+subtitle: "Calidad e imputación únicamente sobre las variables seleccionadas"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+La etapa anterior redujo el estudio a la información que puede utilizarse legítimamente en al menos uno de los modelos. A partir de aquí se revisan tipos, faltantes, categorías y coherencia temporal únicamente sobre esas columnas. Esta separación evita limpiar variables que ya fueron descartadas.
+
+En este documento sí se aplican imputaciones determinísticas mediante categorías explícitas, porque no aprenden información del dataset. En cambio, los transformadores que calculen estadísticas —como la mediana para `edad`— se ajustarán solo con entrenamiento en la etapa 06 para evitar fuga de información.
+
+## Entrada seleccionada y tipos originales
+
+El siguiente bloque consume exclusivamente el artefacto producido por la etapa 02. Antes de modificar valores, muestra el tipo detectado para cada una de las 12 columnas preseleccionadas. Esta revisión permite diferenciar los tipos recibidos desde Parquet de los tipos que requiere el análisis.
+
+```{python}
+#| label: cargar-y-mostrar-tipos-originales
+from IPython.display import Image, Markdown, display
+import pandas as pd
+
+from src.categorical_cleaning import (
+    CATEGORY_TRANSFORMATIONS,
+    clean_selected_categories,
+)
+from src.cleaning import (
+    STAGE_02_SELECTED_PATH,
+    duration_to_hours,
+    impute_missing_bed_category,
+    recalculate_stay_durations,
+    run_stage_03_quality,
+    to_datetime_mixed,
+    to_nullable_integer,
+)
+from src.data_io import require_file
+from src.paths import FIGURES_DIR
+from src.plots import plot_null_counts
+
+require_file(
+    STAGE_02_SELECTED_PATH,
+    "Ejecute primero la etapa 02 para generar 02_variables_seleccionadas.parquet.",
+)
+selected_dataframe = pd.read_parquet(STAGE_02_SELECTED_PATH)
+
+original_types = (
+    selected_dataframe.dtypes.astype(str).replace({"str": "string"})
+    .rename("tipo_original")
+    .rename_axis("columna")
+    .reset_index()
+)
+display(original_types)
+```
+
+
+La tabla anterior constituye la línea base. Varias columnas aparecen como `string` porque contienen texto o valores incompatibles; conservarlas así impediría calcular intervalos y validar edades correctamente.
+
+## Conversión a los tipos finales
+
+### Validación del rango de `edad`
+
+Antes de imputar la edad es necesario separar los valores plausibles de los registros inválidos. En este estudio se acepta una edad únicamente cuando es un número entero comprendido entre **0 y 120 años, inclusive**. El valor cero se conserva porque puede representar a un paciente menor de un año.
+
+Por tanto, se convierten en nulo los siguientes casos:
+
+- valores no numéricos;
+- edades con decimales;
+- edades menores que 0;
+- edades mayores que 120.
+
+Esta transformación no imputa todavía la edad. Los nulos resultantes se conservarán hasta disponer de las particiones de entrenamiento, validación y prueba. Posteriormente, la mediana se calculará exclusivamente con el conjunto de entrenamiento de cada modelo.
+
+Las reglas adoptadas son las siguientes:
+
+| Columnas | Tipo final | Regla de calidad |
+|---|---|---|
+| `edad` | `Int64` | Solo se aceptan números enteros entre 0 y 120 años, inclusive; los demás valores pasan a nulo. |
+| `tiempo_en_ingreso`, `total_en_salida` | `float64` | Las duraciones originales se convierten a horas decimales únicamente para control de calidad. |
+| `fecha_ingreso`, `fecha_conducta`, `fecha_salida` | `datetime64` | Se convierten a fecha y hora; los valores no interpretables pasan a `NaT`. |
+| Demás variables | Tipo recibido | No requieren conversión en este paso. |
+
+Aunque las fechas se presentan como `AAAA-MM-DD hh:mm`, internamente pandas las almacena como `datetime64`. El formato de presentación no debe confundirse con el tipo de dato.
+
+El código principal de las conversiones se muestra de forma explícita a continuación. Se trabaja sobre una copia para conservar intacto el artefacto de la etapa 02.
+
+```{python}
+#| label: convertir-tipos-seleccionados
+quality_dataframe = selected_dataframe.copy(deep=True)
+
+# Edad: solo enteros entre 0 y 120; los demás valores se convierten en nulos.
+quality_dataframe["edad"] = to_nullable_integer(quality_dataframe["edad"])
+
+# Duraciones: hh:mm o hh:mm:ss se convierten en horas decimales.
+for column in ["tiempo_en_ingreso", "total_en_salida"]:
+    quality_dataframe[column] = duration_to_hours(quality_dataframe[column])
+
+# Fechas: conversión a datetime; errores y textos incompatibles se vuelven NaT.
+for column in ["fecha_ingreso", "fecha_conducta", "fecha_salida"]:
+    quality_dataframe[column] = to_datetime_mixed(quality_dataframe[column])
+
+results = run_stage_03_quality(dataframe=quality_dataframe)
+null_summary = results["nulls"]
+type_audit = results["type_audit"]
+metrics = results["metrics"]
+```
+
+
+## Resultado de la conversión
+
+La siguiente tabla compara los tipos antes y después de la transformación. También informa cuántos valores nuevos pasaron a nulo por incumplir el formato esperado; de esta manera, la limpieza no oculta pérdida de información.
+
+```{python}
+#| label: auditar-conversion-tipos
+display(type_audit)
+display(quality_dataframe.head())
+display(Markdown(
+    f"Las conversiones generaron **{metrics['valores_convertidos_a_nulo']:,} "
+    "valores nulos nuevos** por formatos incompatibles."
+))
+```
+
+
+La muestra permite comprobar, por ejemplo, que las duraciones ahora son números en horas. Todos los registros continúan presentes; únicamente se corrigieron tipos y se marcaron como nulos los valores inválidos.
+
+## Recalculo de las duraciones desde las fechas
+
+La revisión clínica confirmó que los dos tiempos se definen mediante relaciones exactas:
+
+$$
+\text{tiempo\_en\_ingreso}=\text{fecha\_conducta}-\text{fecha\_ingreso}
+$$
+
+$$
+\text{total\_en\_salida}=\text{fecha\_salida}-\text{fecha\_conducta}
+$$
+
+Por esta razón, no es apropiado imputar sus nulos con la media o la mediana. Las duraciones finales se recalculan directamente desde las fechas, que constituyen la fuente temporal primaria. Los valores originalmente registrados se utilizan solamente para comprobar coherencia.
+
+Las variables oficiales se crean con las fórmulas `duracion_ingreso_calculada = fecha_conducta - fecha_ingreso` y `duracion_salida_calculada = fecha_salida - fecha_conducta`, expresadas en horas. Las columnas `tiempo_en_ingreso` y `total_en_salida` se conservan sin sobrescribir como controles de calidad.
+
+::: {.callout-warning title="Limitación de calidad y trazabilidad temporal"}
+Las marcas temporales se adoptan como fuente principal porque representan los
+eventos que delimitan cada proceso y permiten aplicar una regla reproducible. Sin
+embargo, no constituyen una verdad libre de error: pueden contener digitaciones
+incorrectas, registros tardíos, correcciones administrativas o diferencias entre
+el momento real del evento y el momento en que fue registrado. Además, la fuente
+disponible no conserva un historial de modificaciones que permita reconstruir
+quién cambió cada fecha, cuándo lo hizo o por qué.
+
+Por ello, recalcular las duraciones desde las fechas mejora la consistencia
+matemática, pero no elimina la limitación de calidad y trazabilidad del dato de
+origen. Las discrepancias frente a las duraciones registradas se cuantifican en
+la auditoría y deben permanecer visibles al interpretar los objetivos, las
+métricas de los modelos y su posible aplicación operativa.
+:::
+
+Si falta alguno de los extremos, la duración calculada permanece nula. Si la diferencia es negativa, también se convierte en nulo porque contradice la secuencia esperada. En esta etapa se identifican esos casos; su exclusión se realizará por separado para cada análisis en la etapa 04.
+
+```{python}
+#| label: recalcular-duraciones-desde-fechas
+# Cálculo visible de las dos duraciones oficiales.
+expected_ingress_duration = (
+    quality_dataframe["fecha_conducta"] - quality_dataframe["fecha_ingreso"]
+).dt.total_seconds().div(3600)
+expected_exit_duration = (
+    quality_dataframe["fecha_salida"] - quality_dataframe["fecha_conducta"]
+).dt.total_seconds().div(3600)
+
+# Una secuencia temporal negativa se considera inválida, no una estancia real.
+expected_ingress_duration = expected_ingress_duration.mask(
+    expected_ingress_duration < 0
+)
+expected_exit_duration = expected_exit_duration.mask(expected_exit_duration < 0)
+
+quality_dataframe, temporal_audit = recalculate_stay_durations(
+    quality_dataframe,
+    tolerance_minutes=1,
+)
+
+pd.testing.assert_series_equal(
+    quality_dataframe["duracion_ingreso_calculada"],
+    expected_ingress_duration.rename("duracion_ingreso_calculada"),
+)
+pd.testing.assert_series_equal(
+    quality_dataframe["duracion_salida_calculada"],
+    expected_exit_duration.rename("duracion_salida_calculada"),
+)
+display(temporal_audit)
+```
+
+
+La tabla muestra cuántas duraciones pudieron calcularse, cuántas diferencias negativas fueron invalidadas, la diferencia máxima frente a cada columna original y cuántos valores difieren en más de un minuto. También comprueba si alguna discrepancia cambia la clasificación institucional de estancia prolongada con el criterio `>= 6 horas`.
+
+## Imputación determinística de `cama`
+
+La variable `cama` participa únicamente en el Modelo B. Sus valores faltantes no se reemplazan por la moda, porque eso asignaría una ubicación física que nunca fue observada. En su lugar, cada ausencia se representa mediante la categoría explícita `cama_sin_registrar`.
+
+A diferencia de la imputación de `edad`, esta regla puede aplicarse antes de dividir los datos: la categoría es una constante definida por el estudio y no aprende frecuencias, medianas ni ninguna otra característica del dataset.
+
+```{python}
+#| label: imputar-cama-categoria-explicita
+missing_beds_before = quality_dataframe["cama"].isna().sum()
+quality_dataframe = impute_missing_bed_category(quality_dataframe)
+
+# Se actualiza el artefacto y el resumen de nulos después de imputar cama.
+results = run_stage_03_quality(
+    dataframe=quality_dataframe,
+    temporal_audit=temporal_audit,
+)
+null_summary = results["nulls"]
+metrics = results["metrics"]
+
+display(Markdown(
+    f"Se reemplazaron **{missing_beds_before:,} valores nulos** de `cama` por "
+    "la categoría `cama_sin_registrar`."
+))
+display(quality_dataframe[["cama"]].value_counts(dropna=False).head(10))
+```
+
+
+El artefacto de esta etapa ya contiene la nueva categoría. La transformación se mantiene también como función reutilizable para aplicar exactamente la misma regla a futuros registros.
+
+## Homologación de variables categóricas
+
+Después de corregir los tipos y los tiempos se normalizan cinco variables categóricas. Las reglas son explícitas y determinísticas: no utilizan los objetivos, no calculan la categoría más frecuente y no requieren ajustar parámetros con el dataset completo.
+
+### Especialidades tratantes
+
+La columna original contiene 2.921 cadenas distintas, pero estas no representan 2.921 especialidades clínicas. La cardinalidad está inflada por tildes, abreviaturas, errores de digitación y combinaciones escritas en diferente orden.
+
+El procedimiento aplicado consta de cuatro pasos:
+
+1. Normalizar mayúsculas, tildes, espacios y puntuación.
+2. Separar combinaciones delimitadas por `/`, `+`, coma o guion.
+3. Homologar cada componente mediante un diccionario explícito de especialidades.
+4. Asignar `otra_especialidad` a componentes no reconocidos y `especialidad_sin_registrar` a los nulos.
+
+No se utiliza similitud difusa automática porque podría fusionar especialidades clínicamente diferentes. Cuando un registro contiene varias especialidades, se conservan todas como etiquetas ordenadas separadas por ` | `. En la etapa de ingeniería se convertirán con codificación multietiqueta, de modo que el orden no genere categorías diferentes.
+
+### Sala de observación
+
+Las salas se normalizan a minúsculas y guion bajo. Los 83 nulos se convierten en `sala_sin_registrar`. El valor aislado `OBS- CAMA 4` también pasa a esa categoría porque describe una cama, no una sala; por ello quedan 84 registros sin sala identificada.
+
+### Triage
+
+Solo se aceptan `Triage 1` a `Triage 5`, normalizados como `triage_1` a `triage_5`. `Seleccionar`, nombres, identificaciones y cualquier otro valor improcedente se convierten en `triage_sin_registrar`. Esta decisión evita inventar una clasificación clínica y elimina información sensible desplazada en la columna.
+
+### Afiliación
+
+`Seleccionar` y los nulos se convierten en `afiliacion_sin_registrar`. `INACTIVO` se conserva como `inactivo`, pues representa una afiliación real sin vigencia. Las demás instituciones se homologan a nombres en minúsculas con guion bajo.
+
+### Conducta
+
+La conducta queda restringida a dos decisiones clínicas: `hospitalizacion` y `salida`. Las variantes de hospitalizar y las remisiones se agrupan en `hospitalizacion`; `SALIDA`, `ORDEN SALIDA` y `SA` se agrupan en `salida`. Los nulos y textos ajenos al campo se convierten en `conducta_sin_registrar`.
+
+El código siguiente ejecuta todas las reglas sobre una copia y produce dos auditorías: el cambio de cardinalidad por columna y el vocabulario final de especialidades.
+
+```{python}
+#| label: homologar-variables-categoricas
+# La tabla permite ver qué función concreta transforma cada columna.
+transformation_table = pd.DataFrame([
+    {
+        "columna": column,
+        "funcion_aplicada": transformation.__name__,
+        "categoria_para_ausencia": missing_label,
+    }
+    for column, (transformation, missing_label) in CATEGORY_TRANSFORMATIONS.items()
+])
+display(transformation_table)
+
+# Aplicación visible, columna por columna, de las reglas descritas arriba.
+expected_categorical_values = quality_dataframe.copy(deep=True)
+for column, (transformation, _) in CATEGORY_TRANSFORMATIONS.items():
+    expected_categorical_values[column] = (
+        expected_categorical_values[column].map(transformation).astype("string")
+    )
+
+quality_dataframe, categorical_audit, specialty_vocabulary = (
+    clean_selected_categories(quality_dataframe)
+)
+
+for column in CATEGORY_TRANSFORMATIONS:
+    pd.testing.assert_series_equal(
+        quality_dataframe[column],
+        expected_categorical_values[column],
+    )
+
+display(categorical_audit)
+display(specialty_vocabulary)
+display(Markdown(
+    f"El vocabulario final contiene **{len(specialty_vocabulary)} especialidades "
+    "homologadas**, incluidas `otra_especialidad` y "
+    "`especialidad_sin_registrar`."
+))
+```
+
+
+Las combinaciones de especialidades no deben interpretarse como una nueva taxonomía. El vocabulario individual queda limitado a 41 etiquetas, aunque se observan 459 combinaciones distintas; estas se conservarán hasta convertirlas en indicadores multietiqueta durante la ingeniería de variables.
+
+Después de completar las transformaciones determinísticas se vuelve a guardar el artefacto de la etapa y se actualizan las auditorías.
+
+```{python}
+#| label: guardar-calidad-categorias
+results = run_stage_03_quality(
+    dataframe=quality_dataframe,
+    temporal_audit=temporal_audit,
+    categorical_audit=categorical_audit,
+    specialty_vocabulary=specialty_vocabulary,
+)
+null_summary = results["nulls"]
+metrics = results["metrics"]
+```
+
+
+## Cantidad de valores nulos
+
+Una vez aplicadas las conversiones, homologaciones e imputaciones determinísticas, la siguiente tabla vuelve a cuantificar los nulos de las 12 variables seleccionadas. Las categorías explícitas ya no aparecen como valores faltantes; los nulos que permanecen requieren una política dependiente del modelo o de la partición de entrenamiento.
+
+```{python}
+#| label: tabla-nulos-seleccionados
+display(null_summary)
+```
+
+
+La misma información se presenta gráficamente para facilitar la comparación entre variables. Las columnas sin nulos permanecen visibles como referencia de completitud.
+
+```{python}
+#| label: grafica-nulos-seleccionados
+null_figure_path = plot_null_counts(
+    quality_dataframe,
+    FIGURES_DIR / "03_nulos_variables_seleccionadas.png",
+)
+display(Image(filename=str(null_figure_path)))
+```
+
+
+## Decisiones para los nulos que permanecen
+
+La tabla anterior muestra valores faltantes que no deben resolverse todos en esta etapa. Su tratamiento depende del papel que desempeña cada variable y del momento en que puede aplicarse una transformación sin introducir fuga de información.
+
+### Edad
+
+Los nulos de `edad` se imputarán mediante la **mediana del conjunto de entrenamiento**. No se añadirá un indicador de ausencia, porque la proporción de valores faltantes es baja y se prioriza un flujo sencillo e interpretable.
+
+La mediana no se calcula en esta etapa. Cada modelo puede tener un conjunto de datos y una partición de entrenamiento diferente, por lo que su imputador se ajustará exclusivamente con `X_train`. Esa misma mediana se aplicará después, sin volver a ajustarla, a validación, prueba y futuros registros.
+
+Esta decisión evita que la distribución de edades de validación o prueba influya en el preprocesamiento del modelo.
+
+### Tiempos utilizados como objetivos
+
+`duracion_ingreso_calculada` definirá si la estancia A es mayor o igual a seis horas y `duracion_salida_calculada` hará lo mismo para B. Sus valores nulos **no se imputarán**, porque hacerlo supondría inventar la etiqueta que se quiere predecir. Las columnas originales se utilizarán únicamente para control de calidad.
+
+Los registros sin `duracion_ingreso_calculada` válida se excluirán únicamente del conjunto de datos del Modelo A. De forma equivalente, los registros sin `duracion_salida_calculada` válida se excluirán del conjunto de datos del Modelo B. No se realizará una eliminación global, porque una fila inválida para un objetivo todavía puede ser válida para el otro.
+
+### `duracion_ingreso_calculada` como predictor del Modelo B
+
+En el Modelo B, `duracion_ingreso_calculada` deja de ser el objetivo y se convierte en un predictor legítimo, pues el proceso de ingreso ya terminó cuando se registra la conducta.
+
+La ausencia proviene de fechas inválidas o secuencias temporales negativas y no representa un faltante aleatorio simple. Los registros con objetivo B válido se conservarán aunque este predictor sea nulo. En la etapa 06, cualquier imputación se ajustará exclusivamente con los datos de entrenamiento y se añadirá un indicador de ausencia, de modo que el modelo pueda representar la diferencia entre una duración observada y una no disponible sin descartar episodios válidos.
+
+Las exclusiones por objetivo inválido se aplicarán al construir por separado los conjuntos A y B. Los faltantes de predictores permanecerán para tratarlos después de las particiones de entrenamiento, validación y prueba.
+
+## Interpretación de la calidad temporal
+
+Las fechas se convirtieron con formato mixto compatible con registros ISO. Los intervalos negativos no se corrigieron artificialmente: quedaron como nulos y deberán excluirse únicamente del conjunto de datos del objetivo afectado. Los textos, ceros y seriales no interpretables en las fechas también permanecen como nulos.
+
+Esta decisión conserva el máximo de información válida: un registro inválido para el Modelo A no se descarta necesariamente del Modelo B, y viceversa.
+
+## Estado de la etapa
+
+El artefacto `data/interim/03_datos_para_analisis.parquet` contiene las variables seleccionadas con sus tipos corregidos, duraciones recalculadas y categorías homologadas. Las ausencias categóricas se representan explícitamente, pero no se ha aplicado imputación estadística. La edad, por ejemplo, conserva sus nulos hasta que la mediana pueda ajustarse exclusivamente con entrenamiento.

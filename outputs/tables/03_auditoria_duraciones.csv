@@ -1,0 +1,3 @@
+﻿duracion_original,duracion_calculada,formula,nulos_registrados,recuperados_desde_fechas,diferencias_mayores_un_minuto,diferencia_maxima_horas,cambios_clasificacion_umbral_6h,duraciones_negativas,nulos_finales
+tiempo_en_ingreso,duracion_ingreso_calculada,fecha_conducta - fecha_ingreso,33,21,5104,3678.4166666666665,167,52,71
+total_en_salida,duracion_salida_calculada,fecha_salida - fecha_conducta,114,104,9126,2994.1833333333334,123,28,44

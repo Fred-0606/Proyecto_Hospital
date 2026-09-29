@@ -1,0 +1,5 @@
+﻿modelo,particion,registros,porcentaje_positivo,fecha_inicial,fecha_final
+A,desarrollo,34390,51.58,2024-09-09 09:57:00,2026-02-28 23:58:00
+A,prueba,8073,,2026-03-01 00:03:00,2026-06-30 23:24:00
+B,desarrollo,34388,30.32,2024-09-09 12:36:00,2026-02-28 23:57:00
+B,prueba,8104,,2026-03-01 00:36:00,2026-07-02 05:44:00

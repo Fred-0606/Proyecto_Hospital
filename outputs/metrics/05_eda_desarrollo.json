@@ -1,0 +1,14 @@
+{
+  "prueba_utilizada": false,
+  "registros_desarrollo_a": 34390,
+  "registros_desarrollo_b": 34388,
+  "artefactos": [
+    "05_balance_objetivos_desarrollo.csv",
+    "05_resumen_duraciones_desarrollo.csv",
+    "05_faltantes_desarrollo.csv",
+    "05_cardinalidad_desarrollo.csv",
+    "05_tasa_por_triage_desarrollo.csv",
+    "05_tasa_por_hora_desarrollo.csv",
+    "05_especialidades_desarrollo.csv"
+  ]
+}

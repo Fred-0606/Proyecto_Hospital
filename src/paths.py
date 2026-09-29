@@ -22,14 +22,3 @@ FIGURES_DIR = OUTPUTS_DIR / "figures"
 TABLES_DIR = OUTPUTS_DIR / "tables"
 METRICS_DIR = OUTPUTS_DIR / "metrics"
 MODELS_DIR = OUTPUTS_DIR / "models"
-
-_OUTPUT_DIRECTORIES = (
-    OUTPUTS_DIR,
-    FIGURES_DIR,
-    TABLES_DIR,
-    METRICS_DIR,
-    MODELS_DIR,
-)
-
-for _directory in _OUTPUT_DIRECTORIES:
-    _directory.mkdir(parents=True, exist_ok=True)

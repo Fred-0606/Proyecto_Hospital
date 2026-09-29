@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import platform
 import re
 import unicodedata
 from datetime import date, datetime
@@ -15,9 +16,22 @@ import pandas as pd
 
 from src.paths import INTERIM_DATA_DIR, METRICS_DIR, PROJECT_ROOT, RAW_DATA_DIR
 
-
-SOURCE_FILENAME = "database_modificado.xlsx"
+SOURCE_FILENAME = "BD_CENSO_2024_2026.xlsx"
 REQUIRED_SHEET = "CENSO"
+
+SOURCE_COLUMN_ALIASES = {
+    "Date": "FECHA INGRESO",
+    "Date.1": "META ESTANCIA",
+    "HH:MM": "TIEMPO EN INGRESO",
+    "Class": "CLASE INGRESO",
+    "Date.2": "FECHA CONDUCTA",
+    "NO MODIFICAR.1": "TOTAL EN SALIDA",
+    "NO MODIFICAR.2": "NO MODIFICAR 1",
+    "NO MODIFICAR.3": "CLASE SALIDA",
+    "NO MODIFICAR.4": "NO MODIFICAR 2",
+    ".": "FECHA SALIDA",
+    "Unnamed: 33": "ESTADO SALIDA",
+}
 
 
 def get_source_excel_path() -> Path:
@@ -60,6 +74,11 @@ def read_censo_sheet(excel_path: Path | None = None) -> pd.DataFrame:
     sheet_names = get_excel_sheet_names(source_path)
     require_sheet(source_path, sheet_names)
     return pd.read_excel(source_path, sheet_name=REQUIRED_SHEET, header=1)
+
+
+def harmonize_source_columns(dataframe: pd.DataFrame) -> pd.DataFrame:
+    """Traduce encabezados técnicos del libro crudo al esquema analítico estable."""
+    return dataframe.rename(columns=SOURCE_COLUMN_ALIASES).copy(deep=True)
 
 
 def copy_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -130,6 +149,19 @@ def save_dataframe_as_parquet(dataframe: pd.DataFrame, output_path: Path) -> Pat
     return output_path
 
 
+def save_dataframe_as_csv(
+    dataframe: pd.DataFrame,
+    output_path: Path,
+    *,
+    encoding: str = "utf-8-sig",
+) -> Path:
+    """Guarda una tabla CSV y crea su carpeta de destino cuando sea necesario."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    table = dataframe if len(dataframe.columns) else pd.DataFrame(columns=["sin_hallazgos"])
+    table.to_csv(output_path, index=False, encoding=encoding)
+    return output_path
+
+
 def calculate_sha256(file_path: Path, chunk_size: int = 1024 * 1024) -> str:
     """Calcula la huella SHA-256 de un archivo por bloques."""
     digest = hashlib.sha256()
@@ -184,7 +216,7 @@ def build_ingestion_metadata(
     rows, columns = dataframe.shape
     return {
         "fecha_hora_ejecucion": datetime.now().astimezone().isoformat(),
-        "version_python": __import__("platform").python_version(),
+        "version_python": platform.python_version(),
         "version_pandas": pd.__version__,
         "ruta_relativa_archivo": project_relative_path(source_path),
         "nombre_archivo": source_path.name,

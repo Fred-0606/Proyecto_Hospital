@@ -2,10 +2,10 @@
 
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from src import validation
+from src.data_io import save_dataframe_as_csv
 
 
 def synthetic_dataframe() -> pd.DataFrame:
@@ -133,7 +133,7 @@ def test_temporal_consistency() -> None:
 def test_csv_json_and_missing_plot_generation(tmp_path: Path) -> None:
     """Las evidencias CSV, JSON y PNG deben escribirse."""
     dataframe = synthetic_dataframe()
-    csv_path = validation._write_csv(
+    csv_path = save_dataframe_as_csv(
         validation.calculate_dimensions(dataframe),
         tmp_path / "dimensions.csv",
     )

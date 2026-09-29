@@ -6,7 +6,7 @@ Proyecto de grado de Maestría en Ciencia de Datos orientado al análisis y la p
 
 ## Objetivo
 
-Analizar el tiempo total entre el triage y la salida física, desarrollar modelos para predecirlo y construir una variable binaria de estancia prolongada. El umbral inicial es de 12 horas y se administra mediante `config/settings.yml`.
+Desarrollar dos modelos de clasificación: uno para predecir si el tiempo entre ingreso y conducta es mayor o igual a seis horas, y otro para predecir si el tiempo entre conducta y egreso administrativo es mayor o igual a seis horas. El umbral corresponde a un objetivo institucional y se administra mediante `config/settings.yml`.
 
 ## Estructura
 
@@ -39,19 +39,35 @@ python -m pip install -r requirements-lock.txt
 
 Cada etapa debe ejecutarse en una sesión limpia y consumir el artefacto generado por la etapa anterior. El orden es:
 
-1. Contexto y diccionario.
-2. Ingesta y validación.
-3. Limpieza y calidad.
-4. Análisis exploratorio.
-5. Ingeniería de variables.
-6. Preprocesamiento.
-7. Modelo baseline.
-8. Modelos comparativos.
-9. Evaluación.
-10. Interpretabilidad.
-11. Conclusiones.
+1. Contexto y objetivos.
+2. ETL de extracción y anonimización.
+3. Diseño analítico y selección de variables.
+4. ETL de transformación y calidad.
+5. Construcción de los conjuntos de datos y partición temporal.
+6. EDA únicamente sobre desarrollo.
+7. Feature engineering y preprocesamiento.
+8. Modelos baseline.
+9. Modelos comparativos.
+10. Evaluación final.
+11. Interpretabilidad.
+12. Conclusiones.
 
-Una etapa individual podrá ejecutarse mediante `scripts/run_step.py` cuando dicho script sea implementado. La ejecución completa se realizará mediante `scripts/run_pipeline.ps1`.
+La etapa 06 documenta las variables temporales y operativas derivadas. Para el
+Modelo A incluye el volumen de ingresos estrictamente anteriores durante las
+ventanas de 3, 6 y 24 horas, calculado sin utilizar la atención actual ni
+eventos futuros.
+
+Una etapa individual se ejecuta indicando su número, por ejemplo:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_step.py 05
+```
+
+La ejecución completa se realiza mediante:
+
+```powershell
+.\scripts\run_pipeline.ps1
+```
 
 ## Renderizado con Quarto
 
@@ -73,8 +89,16 @@ El proyecto no configura publicación automática ni GitHub Pages.
 
 Los datasets, datos hospitalarios, credenciales, tokens y archivos `.env` nunca deben incluirse en Git. Esta restricción también aplica a datos con nombres ficticios, pues podrían conservar información clínica o cuasi-identificadores.
 
-Los directorios `data/raw/`, `data/interim/` y `data/processed/` se mantienen únicamente mediante archivos `.gitkeep`. El archivo `database_modificado.xlsx` está bloqueado explícitamente. Solo deben versionarse tablas o figuras pequeñas, agregadas y necesarias para documentar resultados.
+Los directorios `data/raw/`, `data/interim/` y `data/processed/` se mantienen únicamente mediante archivos `.gitkeep`. Los libros `BD_CENSO_2024_2026.xlsx` y `database_modificado.xlsx` están bloqueados explícitamente. Solo deben versionarse tablas o figuras pequeñas, agregadas y necesarias para documentar resultados.
+
+La etapa 01 utiliza `data/raw/BD_CENSO_2024_2026.xlsx` y anonimiza los identificadores directos antes de escribir el primer Parquet: aplica hash SHA-256 con salt efímero a la identificación, tokens UUID al nombre y enmascaramiento a las columnas operativas que contienen correos. El salt y el mapa de tokens no se persisten.
 
 ## Estado
 
-El repositorio contiene la estructura base. El análisis todavía no ha sido implementado.
+Las etapas 00 a 08 están terminadas. Las etapas 09 a 11 permanecen pendientes:
+evaluación final sobre la prueba temporal reservada, interpretabilidad y
+conclusiones.
+
+La configuración previa a la evaluación final está congelada en
+`config/modelos_congelados.yml`. La etapa 09 debe validar ese manifiesto y sus
+huellas antes de abrir las particiones de prueba.

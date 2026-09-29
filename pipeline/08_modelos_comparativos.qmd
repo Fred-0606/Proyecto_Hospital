@@ -1,0 +1,617 @@
+﻿---
+title: "Etapa 08 — Modelos comparativos"
+subtitle: "Selección temporal de modelos e hiperparámetros"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+Comparar cuatro modelos para las tareas A —ingreso— y B —salida— mediante los
+mismos cinco pliegues temporales. La selección y el ajuste usan exclusivamente
+los datos de desarrollo; la prueba final permanece cerrada hasta la etapa 09.
+
+La métrica principal de selección es **PR-AUC**, porque mide la capacidad de
+ordenar los casos positivos sin depender de un umbral fijo y resulta especialmente
+útil ante el desbalance del Modelo B. ROC-AUC, recall, precision y F1 se reportan
+como evidencia complementaria.
+
+## Modelos candidatos
+
+### Regresión logística regularizada
+
+Es la referencia interpretable. La búsqueda compara L2, Elastic Net y L1 mediante
+`l1_ratio`, distintas intensidades `C` y el uso opcional de pesos balanceados.
+
+**Ventajas:** coeficientes interpretables, entrenamiento rápido, probabilidades
+relativamente estables y una referencia directa frente al baseline L2.
+
+**Desventajas:** supone una relación lineal en el logit y no descubre por sí sola
+interacciones o efectos no lineales.
+
+### Árbol de decisión restringido
+
+Construye reglas jerárquicas y limita su profundidad y tamaño mínimo de hoja para
+reducir sobreajuste.
+
+**Ventajas:** reglas fáciles de explicar, captura relaciones no lineales e
+interacciones sin especificarlas manualmente.
+
+**Desventajas:** puede ser inestable ante pequeños cambios de datos y normalmente
+predice peor que los ensambles.
+
+### Random Forest
+
+Promedia numerosos árboles entrenados con muestras y subconjuntos de variables
+diferentes.
+
+**Ventajas:** comportamiento robusto, captura no linealidad e interacciones y
+requiere menos ajuste fino que boosting.
+
+**Desventajas:** consume más memoria, pierde interpretabilidad frente a un árbol
+único y sus probabilidades pueden requerir calibración.
+
+### XGBoost
+
+Construye árboles secuencialmente, haciendo que cada nuevo árbol corrija errores
+de los anteriores.
+
+**Ventajas:** alto potencial predictivo en datos tabulares, manejo eficiente de
+matrices dispersas y regularización incorporada.
+
+**Desventajas:** mayor sensibilidad a hiperparámetros, riesgo de sobreajuste y
+explicación menos directa que la regresión o un árbol pequeño.
+
+## Preparación
+
+El bloque siguiente importa las clases concretas que se utilizarán. No se abre
+ninguno de los archivos de prueba final.
+
+```{python}
+#| label: preparar-etapa-08
+import json
+
+import numpy as np
+import pandas as pd
+from IPython.display import Image, Markdown, display
+from sklearn.base import clone
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import precision_recall_curve
+from sklearn.model_selection import GridSearchCV
+from sklearn.pipeline import Pipeline
+from sklearn.tree import DecisionTreeClassifier
+from xgboost import XGBClassifier
+
+from src.data_io import (
+    project_relative_path,
+    require_file,
+    save_dataframe_as_csv,
+    save_json,
+)
+from src.model_selection import (
+    STAGE_08_CONFUSION_FIGURE_PATH,
+    STAGE_08_FOLDS_PATH,
+    STAGE_08_METRICS_FIGURE_PATH,
+    STAGE_08_SEARCH_PATH,
+    STAGE_08_SELECTION_PATH,
+    STAGE_08_SUMMARY_PATH,
+    STAGE_08_THRESHOLDS_PATH,
+    summarize_comparison_metrics,
+)
+from src.models import calculate_binary_metrics
+from src.paths import METRICS_DIR
+from src.plots import (
+    plot_candidate_metric_comparison,
+    plot_selected_confusion_matrices,
+)
+from src.preprocessing import (
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_A_PREDICTORS,
+    MODEL_A_TARGET,
+    MODEL_B_DEVELOPMENT_PATH,
+    MODEL_B_PREDICTORS,
+    MODEL_B_TARGET,
+    build_expanding_time_splits,
+    build_model_a_preprocessor,
+    build_model_b_preprocessor,
+)
+
+RANDOM_STATE = 42
+SELECTION_METRIC = "pr_auc"
+FIXED_COMPARISON_THRESHOLD = 0.5
+
+require_file(
+    METRICS_DIR / "06_feature_engineering_preprocesamiento.json",
+    "Ejecute primero la etapa 06 de feature engineering y preprocesamiento.",
+)
+require_file(
+    METRICS_DIR / "07_modelos_baseline.json",
+    "Ejecute primero la etapa 07 de modelos baseline.",
+)
+require_file(
+    MODEL_A_DEVELOPMENT_PATH,
+    "Ejecute primero la etapa 04 para generar 04_ingreso_desarrollo.parquet.",
+)
+require_file(
+    MODEL_B_DEVELOPMENT_PATH,
+    "Ejecute primero la etapa 04 para generar 04_salida_desarrollo.parquet.",
+)
+
+model_a_development = pd.read_parquet(MODEL_A_DEVELOPMENT_PATH)
+model_b_development = pd.read_parquet(MODEL_B_DEVELOPMENT_PATH)
+```
+
+## Modelos y espacios de búsqueda
+
+Las cuadrículas son deliberadamente pequeñas: contienen cambios con significado
+claro y mantienen viable la ejecución completa. `GridSearchCV` recibirá los
+pliegues temporales explícitos; no se utilizará validación aleatoria.
+
+```{python}
+#| label: definir-candidatos-etapa-08
+candidate_specifications = {
+    "regresion_logistica": {
+        "classifier": LogisticRegression(
+            solver="saga",
+            tol=0.001,
+            max_iter=1000,
+            random_state=RANDOM_STATE,
+        ),
+        "parameter_grid": [
+            {
+                "clasificador__C": [0.1, 1.0],
+                "clasificador__l1_ratio": [0.0],
+                "clasificador__class_weight": [None],
+            },
+            {
+                "clasificador__C": [1.0],
+                "clasificador__l1_ratio": [0.5, 1.0],
+                "clasificador__class_weight": [None],
+            },
+            {
+                "clasificador__C": [1.0],
+                "clasificador__l1_ratio": [0.0],
+                "clasificador__class_weight": ["balanced"],
+            },
+        ],
+    },
+    "arbol_decision": {
+        "classifier": DecisionTreeClassifier(random_state=RANDOM_STATE),
+        "parameter_grid": {
+            "clasificador__max_depth": [4, 8],
+            "clasificador__min_samples_leaf": [100],
+            "clasificador__class_weight": ["balanced"],
+        },
+    },
+    "random_forest": {
+        "classifier": RandomForestClassifier(
+            n_estimators=100,
+            max_features="sqrt",
+            class_weight="balanced_subsample",
+            n_jobs=1,
+            random_state=RANDOM_STATE,
+        ),
+        "parameter_grid": {
+            "clasificador__max_depth": [12, None],
+            "clasificador__min_samples_leaf": [20],
+        },
+    },
+    "xgboost": {
+        "classifier": XGBClassifier(
+            n_estimators=150,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            objective="binary:logistic",
+            eval_metric="logloss",
+            tree_method="hist",
+            n_jobs=1,
+            random_state=RANDOM_STATE,
+        ),
+        "parameter_grid": {
+            "clasificador__max_depth": [3, 5],
+            "clasificador__learning_rate": [0.1],
+        },
+    },
+}
+
+search_space_rows = []
+for candidate_name, specification in candidate_specifications.items():
+    grids = specification["parameter_grid"]
+    grids = grids if isinstance(grids, list) else [grids]
+    combinations = sum(
+        int(np.prod([len(values) for values in grid.values()]))
+        for grid in grids
+    )
+    parameter_names = sorted({
+        name.replace("clasificador__", "")
+        for grid in grids
+        for name in grid
+    })
+    search_space_rows.append({
+        "candidato": candidate_name,
+        "combinaciones": combinations,
+        "hiperparametros": ", ".join(parameter_names),
+    })
+
+display(pd.DataFrame(search_space_rows))
+```
+
+## Búsqueda temporal de hiperparámetros
+
+Aquí se muestra el flujo completo de selección. Para cada tarea se crea un
+pipeline nuevo que contiene preprocesamiento y clasificador. Cada combinación se
+evalúa en los mismos cinco periodos y `refit="pr_auc"` conserva la de mayor
+PR-AUC media.
+
+```{python}
+#| label: buscar-hiperparametros-etapa-08
+model_configurations = {
+    "A": {
+        "data": model_a_development,
+        "predictors": MODEL_A_PREDICTORS,
+        "target": MODEL_A_TARGET,
+        "preprocessor_builder": build_model_a_preprocessor,
+    },
+    "B": {
+        "data": model_b_development,
+        "predictors": MODEL_B_PREDICTORS,
+        "target": MODEL_B_TARGET,
+        "preprocessor_builder": build_model_b_preprocessor,
+    },
+}
+
+searches = {}
+search_result_rows = []
+
+for model_name, model_configuration in model_configurations.items():
+    development = model_configuration["data"]
+    predictors = model_configuration["predictors"]
+    target = model_configuration["target"]
+    temporal_splits = build_expanding_time_splits(development, target)
+
+    X_development = development[predictors]
+    y_development = development[target]
+
+    for candidate_name, candidate_specification in candidate_specifications.items():
+        pipeline = Pipeline([
+            ("preprocesamiento", model_configuration["preprocessor_builder"]()),
+            ("clasificador", clone(candidate_specification["classifier"])),
+        ])
+
+        search = GridSearchCV(
+            estimator=pipeline,
+            param_grid=candidate_specification["parameter_grid"],
+            scoring={"pr_auc": "average_precision", "roc_auc": "roc_auc"},
+            refit=SELECTION_METRIC,
+            cv=temporal_splits,
+            # Ejecución secuencial: evita duplicar en memoria las matrices one-hot.
+            n_jobs=1,
+            return_train_score=True,
+            error_score="raise",
+        )
+        search.fit(X_development, y_development)
+        searches[(model_name, candidate_name)] = search
+
+        for parameter_index, parameters in enumerate(search.cv_results_["params"]):
+            search_result_rows.append({
+                "modelo": model_name,
+                "candidato": candidate_name,
+                "parametros": json.dumps(parameters, ensure_ascii=False),
+                "pr_auc_entrenamiento": search.cv_results_[
+                    "mean_train_pr_auc"
+                ][parameter_index],
+                "pr_auc_validacion": search.cv_results_[
+                    "mean_test_pr_auc"
+                ][parameter_index],
+                "roc_auc_validacion": search.cv_results_[
+                    "mean_test_roc_auc"
+                ][parameter_index],
+                "seleccionado": parameter_index == search.best_index_,
+            })
+
+search_results = pd.DataFrame(search_result_rows)
+best_search_results = search_results.loc[search_results["seleccionado"]].copy()
+display(best_search_results.round(4))
+```
+
+## Evaluación explícita de las configuraciones elegidas
+
+`GridSearchCV` identifica los hiperparámetros, pero el siguiente ciclo vuelve a
+mostrar exactamente qué recibe cada `fit()` y cada `predict_proba()`. Las métricas
+de entrenamiento y validación se calculan por separado con umbral 0,5. Las
+probabilidades de validación se conservan para seleccionar posteriormente el
+umbral operativo del ganador de cada tarea.
+
+```{python}
+#| label: evaluar-configuraciones-etapa-08
+fold_result_rows = []
+validation_prediction_rows = []
+
+for model_name, model_configuration in model_configurations.items():
+    development = model_configuration["data"]
+    predictors = model_configuration["predictors"]
+    target = model_configuration["target"]
+    temporal_splits = build_expanding_time_splits(development, target)
+
+    for candidate_name in candidate_specifications:
+        selected_pipeline = searches[(model_name, candidate_name)].best_estimator_
+
+        for fold_number, (train_indices, validation_indices) in enumerate(
+            temporal_splits,
+            start=1,
+        ):
+            train = development.iloc[train_indices]
+            validation = development.iloc[validation_indices]
+            X_train = train[predictors]
+            y_train = train[target]
+            X_validation = validation[predictors]
+            y_validation = validation[target]
+
+            fitted_pipeline = clone(selected_pipeline)
+            fitted_pipeline.fit(X_train, y_train)
+
+            for partition, features, labels in (
+                ("entrenamiento", X_train, y_train),
+                ("validacion", X_validation, y_validation),
+            ):
+                probabilities = fitted_pipeline.predict_proba(features)[:, 1]
+                fold_result_rows.append({
+                    "modelo": model_name,
+                    "candidato": candidate_name,
+                    "pliegue": fold_number,
+                    "particion": partition,
+                    **calculate_binary_metrics(
+                        labels,
+                        probabilities,
+                        threshold=FIXED_COMPARISON_THRESHOLD,
+                    ),
+                })
+
+                if partition == "validacion":
+                    validation_prediction_rows.extend([
+                        {
+                            "modelo": model_name,
+                            "candidato": candidate_name,
+                            "pliegue": fold_number,
+                            "etiqueta": int(label),
+                            "probabilidad": float(probability),
+                        }
+                        for label, probability in zip(
+                            labels,
+                            probabilities,
+                            strict=True,
+                        )
+                    ])
+
+fold_metrics = pd.DataFrame(fold_result_rows)
+validation_predictions = pd.DataFrame(validation_prediction_rows)
+comparison_summary = summarize_comparison_metrics(fold_metrics)
+
+display(comparison_summary.round(4))
+```
+
+## Comparación visual
+
+Las barras muestran las métricas medias obtenidas en los cinco bloques de
+validación con umbral 0,5. PR-AUC y ROC-AUC evalúan el ordenamiento probabilístico;
+recall, precision y F1 dependen del umbral.
+
+```{python}
+#| label: comparar-visualmente-etapa-08
+#| echo: false
+validation_summary = comparison_summary.loc[
+    comparison_summary["particion"].eq("validacion")
+].copy()
+plot_candidate_metric_comparison(
+    validation_summary,
+    STAGE_08_METRICS_FIGURE_PATH,
+)
+display(Image(filename=str(STAGE_08_METRICS_FIGURE_PATH)))
+```
+
+## Selección del modelo y del umbral
+
+Para evitar escoger un modelo complejo por una diferencia posiblemente aleatoria,
+se aplica la regla de un error estándar. Primero se identifica la PR-AUC media
+máxima y su error estándar entre pliegues. Se consideran equivalentes los modelos
+cuya media queda dentro de ese margen y se elige el más simple en este orden:
+regresión, árbol, Random Forest y XGBoost.
+
+Después, solo para el candidato elegido, se selecciona sobre las predicciones de
+validación el umbral que maximiza F1. Esta segunda decisión modifica el equilibrio
+entre recall y precision, pero no altera PR-AUC ni ROC-AUC. La evaluación imparcial
+de ambas decisiones queda reservada para la prueba futura de la etapa 09.
+
+```{python}
+#| label: seleccionar-modelos-umbrales-etapa-08
+selection_rows = []
+selection_metadata = {}
+complexity_order = {
+    "regresion_logistica": 0,
+    "arbol_decision": 1,
+    "random_forest": 2,
+    "xgboost": 3,
+}
+
+for model_name in model_configurations:
+    model_validation_summary = validation_summary.loc[
+        validation_summary["modelo"].eq(model_name)
+    ]
+    fold_pr_auc = fold_metrics.loc[
+        fold_metrics["modelo"].eq(model_name)
+        & fold_metrics["particion"].eq("validacion")
+    ].groupby("candidato")["pr_auc"]
+    uncertainty = fold_pr_auc.agg(["mean", "std", "count"]).reset_index()
+    uncertainty["error_estandar"] = (
+        uncertainty["std"] / np.sqrt(uncertainty["count"])
+    )
+    best_by_mean = uncertainty.sort_values("mean", ascending=False).iloc[0]
+    equivalence_limit = float(
+        best_by_mean["mean"] - best_by_mean["error_estandar"]
+    )
+    equivalent_candidates = uncertainty.loc[
+        uncertainty["mean"].ge(equivalence_limit)
+    ].copy()
+    equivalent_candidates["complejidad"] = equivalent_candidates[
+        "candidato"
+    ].map(complexity_order)
+    selected_candidate = str(
+        equivalent_candidates.sort_values("complejidad").iloc[0]["candidato"]
+    )
+    winner = model_validation_summary.loc[
+        model_validation_summary["candidato"].eq(selected_candidate)
+    ].iloc[0]
+
+    selected_predictions = validation_predictions.loc[
+        validation_predictions["modelo"].eq(model_name)
+        & validation_predictions["candidato"].eq(selected_candidate)
+    ]
+    labels = selected_predictions["etiqueta"]
+    probabilities = selected_predictions["probabilidad"].to_numpy()
+
+    precision_values, recall_values, candidate_thresholds = precision_recall_curve(
+        labels,
+        probabilities,
+    )
+    f1_values = (
+        2 * precision_values[:-1] * recall_values[:-1]
+        / np.maximum(precision_values[:-1] + recall_values[:-1], 1e-12)
+    )
+    selected_threshold = float(candidate_thresholds[int(np.argmax(f1_values))])
+    selected_metrics = calculate_binary_metrics(
+        labels,
+        probabilities,
+        threshold=selected_threshold,
+    )
+
+    best_parameters = searches[
+        (model_name, selected_candidate)
+    ].best_params_
+    selection_rows.append({
+        "modelo": model_name,
+        "candidato": selected_candidate,
+        "umbral": selected_threshold,
+        **selected_metrics,
+    })
+    selection_metadata[model_name] = {
+        "candidato": selected_candidate,
+        "hiperparametros": best_parameters,
+        "umbral": selected_threshold,
+        "metrica_seleccion": SELECTION_METRIC,
+        "regla_seleccion": "modelo_mas_simple_dentro_de_un_error_estandar",
+        "limite_equivalencia_pr_auc": equivalence_limit,
+        "pr_auc_validacion": float(winner["pr_auc_mean"]),
+        "roc_auc_validacion": float(winner["roc_auc_mean"]),
+    }
+
+selected_models = pd.DataFrame(selection_rows)
+display(selected_models.round(4))
+```
+
+## Matrices de confusión seleccionadas
+
+Estas matrices agregan los cinco periodos de validación no superpuestos y aplican
+el umbral seleccionado para cada ganador. No contienen observaciones de prueba.
+
+```{python}
+#| label: matrices-seleccionados-etapa-08
+#| echo: false
+plot_selected_confusion_matrices(
+    selected_models,
+    STAGE_08_CONFUSION_FIGURE_PATH,
+)
+display(Image(filename=str(STAGE_08_CONFUSION_FIGURE_PATH)))
+```
+
+## Interpretación de la selección
+
+```{python}
+#| label: interpretar-seleccion-etapa-08
+#| echo: false
+for model_name, selected in selected_models.set_index("modelo").iterrows():
+    logistic_pr_auc = validation_summary.loc[
+        validation_summary["modelo"].eq(model_name)
+        & validation_summary["candidato"].eq("regresion_logistica"),
+        "pr_auc_mean",
+    ].iloc[0]
+    maximum_pr_auc = validation_summary.loc[
+        validation_summary["modelo"].eq(model_name), "pr_auc_mean"
+    ].max()
+    display(Markdown(
+        f"**Modelo {model_name}.** Se selecciona `{selected['candidato']}`. "
+        f"Su PR-AUC media es {logistic_pr_auc:.3f}; el máximo observado entre "
+        f"todos los candidatos fue {maximum_pr_auc:.3f}. Con el umbral "
+        f"{selected['umbral']:.3f}, recall={selected['recall']:.3f}, "
+        f"precision={selected['precision']:.3f} y F1={selected['f1']:.3f}."
+    ))
+```
+
+En el Modelo A la capacidad discriminativa sigue siendo modesta. Por ello, el
+umbral que maximiza F1 puede acercarse a una estrategia que clasifica como
+positiva una proporción muy alta de casos. Debe interpretarse como un candidato
+de validación, no como una decisión operativa definitiva. En el Modelo B, reducir
+el umbral responde al bajo recall observado con 0,5, a costa de aumentar falsos
+positivos. La etapa 09 medirá este intercambio una sola vez en prueba.
+
+## Artefactos producidos
+
+```{python}
+#| label: guardar-etapa-08
+save_dataframe_as_csv(search_results, STAGE_08_SEARCH_PATH)
+save_dataframe_as_csv(fold_metrics, STAGE_08_FOLDS_PATH)
+save_dataframe_as_csv(comparison_summary, STAGE_08_SUMMARY_PATH)
+save_dataframe_as_csv(selected_models, STAGE_08_THRESHOLDS_PATH)
+save_json(
+    {
+        "prueba_final_utilizada": False,
+        "pliegues_temporales": 5,
+        "metrica_principal": SELECTION_METRIC,
+        "umbral_comparacion": FIXED_COMPARISON_THRESHOLD,
+        "seleccion": selection_metadata,
+        "artefactos": [
+            STAGE_08_SEARCH_PATH.name,
+            STAGE_08_FOLDS_PATH.name,
+            STAGE_08_SUMMARY_PATH.name,
+            STAGE_08_THRESHOLDS_PATH.name,
+            STAGE_08_METRICS_FIGURE_PATH.name,
+            STAGE_08_CONFUSION_FIGURE_PATH.name,
+        ],
+    },
+    STAGE_08_SELECTION_PATH,
+)
+
+display(pd.DataFrame({
+    "artefacto": [
+        project_relative_path(STAGE_08_SEARCH_PATH),
+        project_relative_path(STAGE_08_FOLDS_PATH),
+        project_relative_path(STAGE_08_SUMMARY_PATH),
+        project_relative_path(STAGE_08_THRESHOLDS_PATH),
+        project_relative_path(STAGE_08_SELECTION_PATH),
+        project_relative_path(STAGE_08_METRICS_FIGURE_PATH),
+        project_relative_path(STAGE_08_CONFUSION_FIGURE_PATH),
+    ],
+    "contenido": [
+        "Resultados de todas las combinaciones de hiperparámetros",
+        "Métricas de entrenamiento y validación por pliegue",
+        "Métricas medias por candidato y partición",
+        "Umbrales y métricas de los modelos seleccionados",
+        "Decisión reproducible por tarea",
+        "Comparación visual de candidatos",
+        "Matrices de confusión de los ganadores",
+    ],
+}))
+```
+
+La etapa 09 deberá leer `08_seleccion_modelos.json`, reconstruir cada ganador con
+sus hiperparámetros, ajustarlo una sola vez con todo el conjunto de desarrollo y
+aplicar el umbral seleccionado a la prueba final.
+

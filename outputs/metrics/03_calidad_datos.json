@@ -1,0 +1,84 @@
+{
+  "filas": 42537,
+  "columnas": 14,
+  "celdas_nulas": 605,
+  "filas_con_algun_nulo": 541,
+  "valores_convertidos_a_nulo": 192,
+  "imputacion_deterministica_cama_aplicada": true,
+  "registros_cama_sin_registrar": 1055,
+  "imputacion_estadistica_aplicada": false,
+  "auditoria_duraciones": [
+    {
+      "duracion_original": "tiempo_en_ingreso",
+      "duracion_calculada": "duracion_ingreso_calculada",
+      "formula": "fecha_conducta - fecha_ingreso",
+      "nulos_registrados": 33,
+      "recuperados_desde_fechas": 21,
+      "diferencias_mayores_un_minuto": 5104,
+      "diferencia_maxima_horas": 3678.4166666666665,
+      "cambios_clasificacion_umbral_6h": 167,
+      "duraciones_negativas": 52,
+      "nulos_finales": 71
+    },
+    {
+      "duracion_original": "total_en_salida",
+      "duracion_calculada": "duracion_salida_calculada",
+      "formula": "fecha_salida - fecha_conducta",
+      "nulos_registrados": 114,
+      "recuperados_desde_fechas": 104,
+      "diferencias_mayores_un_minuto": 9126,
+      "diferencia_maxima_horas": 2994.1833333333334,
+      "cambios_clasificacion_umbral_6h": 123,
+      "duraciones_negativas": 28,
+      "nulos_finales": 44
+    }
+  ],
+  "auditoria_categorias": [
+    {
+      "columna": "especialidades_tratantes",
+      "categorias_originales": 2921,
+      "nulos_originales": 98,
+      "categorias_finales": 459,
+      "categoria_sin_registrar": "especialidad_sin_registrar",
+      "registros_sin_registrar": 98,
+      "etiquetas_individuales_finales": 41
+    },
+    {
+      "columna": "sala_observacion",
+      "categorias_originales": 16,
+      "nulos_originales": 83,
+      "categorias_finales": 16,
+      "categoria_sin_registrar": "sala_sin_registrar",
+      "registros_sin_registrar": 84,
+      "etiquetas_individuales_finales": null
+    },
+    {
+      "columna": "triage",
+      "categorias_originales": 11,
+      "nulos_originales": 35,
+      "categorias_finales": 6,
+      "categoria_sin_registrar": "triage_sin_registrar",
+      "registros_sin_registrar": 170,
+      "etiquetas_individuales_finales": null
+    },
+    {
+      "columna": "afiliacion",
+      "categorias_originales": 7,
+      "nulos_originales": 33,
+      "categorias_finales": 7,
+      "categoria_sin_registrar": "afiliacion_sin_registrar",
+      "registros_sin_registrar": 153,
+      "etiquetas_individuales_finales": null
+    },
+    {
+      "columna": "conducta",
+      "categorias_originales": 38,
+      "nulos_originales": 12,
+      "categorias_finales": 3,
+      "categoria_sin_registrar": "conducta_sin_registrar",
+      "registros_sin_registrar": 36,
+      "etiquetas_individuales_finales": null
+    }
+  ],
+  "especialidades_homologadas": 41
+}

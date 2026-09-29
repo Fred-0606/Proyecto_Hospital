@@ -28,19 +28,6 @@ def test_directory_constants_are_relative_to_project_root() -> None:
     assert paths.MODELS_DIR == root / "outputs" / "models"
 
 
-def test_output_directories_exist() -> None:
-    """Los directorios destinados a resultados deben estar disponibles."""
-    output_directories = (
-        paths.OUTPUTS_DIR,
-        paths.FIGURES_DIR,
-        paths.TABLES_DIR,
-        paths.METRICS_DIR,
-        paths.MODELS_DIR,
-    )
-
-    assert all(directory.is_dir() for directory in output_directories)
-
-
 def test_project_root_does_not_depend_on_working_directory(
     monkeypatch,
     tmp_path: Path,

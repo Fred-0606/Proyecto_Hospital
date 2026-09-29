@@ -1,59 +1,68 @@
 ---
-title: "Proyecto Hospital"
+title: "Predicción de estancias en urgencias"
+subtitle: "Dos momentos operativos, dos modelos y una política estricta contra la fuga de información"
 format: html
 execute:
-  error: true
+  enabled: false
 ---
 
-## Descripción general
+## Propósito del proyecto
 
-Proyecto de grado de Maestría en Ciencia de Datos para analizar y predecir estancias prolongadas en un servicio de urgencias hospitalarias de Bogotá. El flujo combina documentos Quarto para la narrativa con funciones reutilizables en `src/`.
+Este proyecto de grado desarrolla un flujo reproducible de ciencia de datos para anticipar demoras en dos etapas distintas de la atención de urgencias. La unidad de análisis es cada episodio de atención en el servicio de urgencias. El umbral de estancia prolongada es mayor o igual a seis horas y corresponde a un objetivo institucional definido antes del análisis.
 
-## Pregunta de investigación
+::: {.callout-note title="Diseño definitivo del estudio"}
+El trabajo no intenta predecir un único tiempo total. Se construirán **dos modelos de clasificación independientes**, cada uno limitado a la información disponible en su propio momento de predicción.
+:::
 
-¿Qué características disponibles durante la atención permiten explicar y predecir el tiempo total de estancia y la ocurrencia de estancias prolongadas en el servicio de urgencias?
+## Preguntas de investigación
 
-## Objetivo general
+### Modelo A — Estancia en ingreso
 
-Desarrollar un proceso reproducible para analizar el tiempo de estancia y comparar modelos predictivos de regresión y clasificación, evitando fuga de información y documentando sus limitaciones.
+¿Qué información disponible después del triage permite predecir si transcurrirán seis horas o más entre `fecha_ingreso` y `fecha_conducta`?
 
-## Variable dependiente
+### Modelo B — Estancia en salida
 
-La variable dependiente principal es el tiempo total, expresado en horas, entre el triage y la salida física. La variable binaria de estancia prolongada se deriva de un umbral configurable en `config/settings.yml`, inicialmente establecido en 12 horas.
+¿Qué información disponible inmediatamente al registrar la conducta permite predecir si transcurrirán seis horas o más entre `fecha_conducta` y el egreso administrativo registrado en `fecha_salida`?
 
-## Diagrama textual del pipeline
+## Línea temporal
 
 ```text
-00 Contexto y diccionario
-  → 01 Ingesta y validación
-  → 02 Limpieza y calidad
-  → 03 Análisis exploratorio
-  → 04 Ingeniería de variables
-  → 05 Preprocesamiento
-  → 06 Modelo baseline
-  → 07 Modelos comparativos
-  → 08 Evaluación
-  → 09 Interpretabilidad
-  → 10 Conclusiones
+TRIAGE DEFINIDO
+      │
+      ▼
+fecha_ingreso ─────────────── fecha_conducta ─────────────── fecha_salida
+      │                              │                              │
+predicción A                   predicción B                  egreso administrativo
+      └── objetivo A: >= 6 h ───────┘
+                                     └── objetivo B: >= 6 h ───────┘
 ```
 
-## Estado y acceso a los módulos
+## Principio de disponibilidad temporal
 
-| Etapa | Documento | Estado |
+Una variable solo podrá ser predictora si:
+
+1. existe antes del momento de predicción correspondiente;
+2. el archivo conserva el valor que tenía en ese momento;
+3. no deriva del objetivo ni de un evento posterior;
+4. estaría disponible de la misma manera durante el uso real del modelo.
+
+## Pipeline del proyecto
+
+| Etapa | Propósito | Estado |
 |---:|---|---|
-| 00 | [Contexto y diccionario](pipeline/00_contexto_y_diccionario.qmd) | Esqueleto documentado; contenido pendiente |
-| 01 | [Ingesta y validación](pipeline/01_ingesta_y_validacion.qmd) | Esqueleto documentado; implementación pendiente |
-| 02 | [Limpieza y calidad](pipeline/02_limpieza_y_calidad.qmd) | Esqueleto documentado; implementación pendiente |
-| 03 | [Análisis exploratorio](pipeline/03_analisis_exploratorio.qmd) | Esqueleto documentado; análisis pendiente |
-| 04 | [Ingeniería de variables](pipeline/04_ingenieria_variables.qmd) | Esqueleto documentado; implementación pendiente |
-| 05 | [Preprocesamiento](pipeline/05_preprocesamiento.qmd) | Esqueleto documentado; implementación pendiente |
-| 06 | [Modelo baseline](pipeline/06_modelo_baseline.qmd) | Esqueleto documentado; modelado pendiente |
-| 07 | [Modelos comparativos](pipeline/07_modelos_comparativos.qmd) | Esqueleto documentado; modelado pendiente |
-| 08 | [Evaluación](pipeline/08_evaluacion.qmd) | Esqueleto documentado; evaluación pendiente |
-| 09 | [Interpretabilidad](pipeline/09_interpretabilidad.qmd) | Esqueleto documentado; interpretación pendiente |
-| 10 | [Conclusiones](pipeline/10_conclusiones.qmd) | Esqueleto documentado; redacción pendiente |
+| 00 | Definir contexto, objetivos, tiempos y reglas de disponibilidad | Terminado |
+| 01 | Ejecutar ETL de extracción, anonimización y validación | Ejecutado |
+| 02 | Definir el diseño analítico y seleccionar variables | Terminado |
+| 03 | Ejecutar ETL de transformación y calidad | Terminado |
+| 04 | Construir los conjuntos A/B y reservar la prueba temporal | Terminado |
+| 05 | Realizar EDA exclusivamente sobre desarrollo | Terminado |
+| 06 | Documentar feature engineering y preprocesamiento | Terminado |
+| 07 | Establecer baselines para ambos objetivos | Terminado |
+| 08 | Comparar modelos bajo el mismo protocolo | Terminado |
+| 09 | Evaluar una sola vez sobre prueba | Pendiente |
+| 10 | Interpretar asociaciones predictivas | Pendiente |
+| 11 | Integrar resultados, limitaciones y recomendaciones | Pendiente |
 
-## Pendientes
+## Navegación recomendada
 
-- Ejecutar cada etapa en orden cuando se disponga de los datos autorizados.
-- Actualizar los estados sin inventar resultados.
+Comience por [Contexto y objetivos](pipeline/00_contexto_y_objetivos.qmd), continúe con [ETL de extracción y anonimización](pipeline/01_etl_extraccion_anonimizacion.qmd), defina las variables autorizadas en [Diseño analítico y selección](pipeline/02_diseno_analitico_y_seleccion.qmd) y aplique después [ETL de transformación y calidad](pipeline/03_etl_transformacion_calidad.qmd).

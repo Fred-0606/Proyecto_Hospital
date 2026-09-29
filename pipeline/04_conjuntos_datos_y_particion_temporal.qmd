@@ -1,0 +1,173 @@
+---
+title: "Etapa 04 — Conjuntos de datos y partición temporal"
+subtitle: "Construcción independiente de A y B y cierre de la prueba futura"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+Esta etapa construye los conjuntos de datos de los modelos A y B, elimina solo
+los registros que no permiten definir su respectivo objetivo y reserva la prueba
+futura antes de realizar el análisis exploratorio. Desde este punto, las
+decisiones se toman exclusivamente con desarrollo.
+
+## Entradas y reglas visibles
+
+```{python}
+#| label: cargar-etapa-04
+from IPython.display import Markdown, display
+import pandas as pd
+
+from src.cleaning import STAGE_03_OUTPUT_PATH
+from src.data_io import require_file, save_dataframe_as_parquet
+from src.features import (
+    MODEL_A_OUTPUT_PATH,
+    MODEL_B_OUTPUT_PATH,
+    MODEL_A_THRESHOLD_HOURS,
+    MODEL_B_THRESHOLD_HOURS,
+    build_duplicate_audit,
+    build_model_a_dataset,
+    build_model_b_dataset,
+    exclude_implausible_stays,
+    remove_exact_duplicates,
+)
+from src.preprocessing import (
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_A_TEST_PATH,
+    MODEL_B_DEVELOPMENT_PATH,
+    MODEL_B_TEST_PATH,
+    TEST_START_DATE,
+    run_stage_04_partitioning,
+)
+
+require_file(
+    STAGE_03_OUTPUT_PATH,
+    "Ejecute primero la etapa 03 para generar 03_datos_para_analisis.parquet.",
+)
+datos_limpios = pd.read_parquet(STAGE_03_OUTPUT_PATH)
+display(pd.DataFrame({"filas_entrada": [len(datos_limpios)]}))
+```
+
+Las reglas centrales son explícitas:
+
+```text
+objetivo A = 1 si (fecha_conducta - fecha_ingreso) >= 6 horas
+objetivo B = 1 si (fecha_salida - fecha_conducta) >= 6 horas
+desarrollo = fecha_referencia < 2026-03-01
+prueba     = fecha_referencia >= 2026-03-01
+```
+
+## Construcción separada de A y B
+
+```{python}
+#| label: construir-conjuntos-datos
+datos_validos, estancias_imposibles = exclude_implausible_stays(datos_limpios)
+
+modelo_a = build_model_a_dataset(datos_validos)
+modelo_b = build_model_b_dataset(datos_validos)
+
+auditoria_duplicados = build_duplicate_audit(modelo_a, modelo_b)
+modelo_a, duplicados_a = remove_exact_duplicates(modelo_a)
+modelo_b, duplicados_b = remove_exact_duplicates(modelo_b)
+
+assert modelo_a["estancia_prolongada_a"].equals(
+    modelo_a["duracion_ingreso_calculada"]
+    .ge(MODEL_A_THRESHOLD_HOURS)
+    .astype("int8")
+)
+assert modelo_b["estancia_prolongada_b"].equals(
+    modelo_b["duracion_salida_calculada"]
+    .ge(MODEL_B_THRESHOLD_HOURS)
+    .astype("int8")
+)
+
+save_dataframe_as_parquet(modelo_a, MODEL_A_OUTPUT_PATH)
+save_dataframe_as_parquet(modelo_b, MODEL_B_OUTPUT_PATH)
+
+display(pd.DataFrame({
+    "modelo": ["A", "B"],
+    "registros": [len(modelo_a), len(modelo_b)],
+    "duplicados_exactos_eliminados": [duplicados_a, duplicados_b],
+    "proporcion_positiva": [
+        modelo_a["estancia_prolongada_a"].mean(),
+        modelo_b["estancia_prolongada_b"].mean(),
+    ],
+}))
+display(auditoria_duplicados)
+```
+
+Durante la construcción de A también se cuentan los ingresos estrictamente
+anteriores ocurridos en las últimas 3, 6 y 24 horas. Su definición detallada,
+tratamiento numérico y control de fuga temporal se presentan en la etapa 06.
+
+El Modelo A excluye únicamente duraciones de ingreso inválidas. El Modelo B
+excluye únicamente duraciones de salida inválidas y conserva una duración de
+ingreso ausente como predictor faltante. No se elimina una fila de ambos modelos
+solo porque sea inválida para uno de ellos.
+
+## Cierre de la prueba futura
+
+```{python}
+#| label: particion-temporal-etapa-04
+resultados_particion = run_stage_04_partitioning()
+
+desarrollo_a = resultados_particion["modelo_a_desarrollo"]
+prueba_a = resultados_particion["modelo_a_prueba"]
+desarrollo_b = resultados_particion["modelo_b_desarrollo"]
+prueba_b = resultados_particion["modelo_b_prueba"]
+
+assert desarrollo_a["fecha_referencia"].max() < TEST_START_DATE
+assert prueba_a["fecha_referencia"].min() >= TEST_START_DATE
+assert desarrollo_b["fecha_referencia"].max() < TEST_START_DATE
+assert prueba_b["fecha_referencia"].min() >= TEST_START_DATE
+
+display(resultados_particion["resumen"])
+```
+
+El resumen muestra el tamaño y el periodo de prueba, pero oculta su prevalencia
+y cualquier otra estadística calculada a partir del objetivo. Las etapas 05 a
+08 no cargarán la prueba; solo la etapa 09 podrá utilizarla una vez fijados el
+algoritmo, los hiperparámetros y el umbral.
+
+::: {.callout-warning title="Nota de transparencia sobre la prueba"}
+En ejecuciones anteriores del proyecto se llegó a observar la prevalencia del
+objetivo en la partición de prueba. Esa información no se utilizó para ajustar
+transformadores, seleccionar variables, entrenar modelos ni escoger umbrales.
+Desde esta versión queda oculta hasta la evaluación final. Esta observación
+previa debe mencionarse como limitación al reportar los resultados finales.
+:::
+
+## Cinco pliegues temporales de desarrollo
+
+```{python}
+#| label: pliegues-etapa-04
+display(pd.DataFrame(resultados_particion["metadatos"]["pliegues_modelo_a"]))
+display(pd.DataFrame(resultados_particion["metadatos"]["pliegues_modelo_b"]))
+```
+
+Cada validación ocurre después de su entrenamiento. No hay barajado aleatorio ni
+observaciones futuras dentro de los bloques de ajuste.
+
+## Artefactos entregados
+
+```{python}
+#| label: artefactos-etapa-04
+display(pd.DataFrame({
+    "artefacto": [
+        str(MODEL_A_DEVELOPMENT_PATH.relative_to(MODEL_A_DEVELOPMENT_PATH.parents[2])),
+        str(MODEL_A_TEST_PATH.relative_to(MODEL_A_TEST_PATH.parents[2])),
+        str(MODEL_B_DEVELOPMENT_PATH.relative_to(MODEL_B_DEVELOPMENT_PATH.parents[2])),
+        str(MODEL_B_TEST_PATH.relative_to(MODEL_B_TEST_PATH.parents[2])),
+    ],
+    "uso": ["desarrollo A", "prueba cerrada A", "desarrollo B", "prueba cerrada B"],
+}))
+```

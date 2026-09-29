@@ -12,3 +12,5 @@ jupyter
 ipykernel
 pytest
 pandera
+python-docx
+xgboost

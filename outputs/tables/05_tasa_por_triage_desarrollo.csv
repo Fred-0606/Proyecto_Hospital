@@ -1,0 +1,13 @@
+﻿triage,registros,tasa_prolongada,modelo
+triage_1,1447,50.65653075328266,Modelo A — ingreso
+triage_2,13324,53.96277394175924,Modelo A — ingreso
+triage_3,19039,50.40180681758496,Modelo A — ingreso
+triage_4,417,41.247002398081534,Modelo A — ingreso
+triage_5,31,22.58064516129032,Modelo A — ingreso
+triage_sin_registrar,132,31.060606060606062,Modelo A — ingreso
+triage_1,1443,36.65973665973666,Modelo B — salida
+triage_2,13331,31.76055809766709,Modelo B — salida
+triage_3,19035,29.093774625689516,Modelo B — salida
+triage_4,415,20.96385542168675,Modelo B — salida
+triage_5,32,28.125,Modelo B — salida
+triage_sin_registrar,132,21.96969696969697,Modelo B — salida

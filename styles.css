@@ -1,0 +1,66 @@
+:root {
+  --project-navy: #12304a;
+  --project-blue: #1f4e79;
+  --project-soft-blue: #eaf2f8;
+  --project-text: #263442;
+  --project-border: #c8d6e3;
+}
+
+body {
+  color: var(--project-text);
+  font-family: "Aptos", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: var(--project-navy);
+  font-family: "Aptos Display", "Segoe UI Semibold", "Helvetica Neue", Arial, sans-serif;
+  letter-spacing: -0.015em;
+}
+
+h1 {
+  border-bottom: 3px solid var(--project-blue);
+  padding-bottom: 0.35rem;
+}
+
+h2 {
+  border-bottom: 1px solid var(--project-border);
+  padding-bottom: 0.25rem;
+  margin-top: 2.2rem;
+}
+
+a {
+  color: var(--project-blue);
+}
+
+table {
+  font-size: 0.95rem;
+}
+
+thead {
+  background: var(--project-navy);
+  color: #ffffff;
+}
+
+.callout-note {
+  border-left-color: var(--project-blue) !important;
+}
+
+.callout-note .callout-header {
+  background-color: var(--project-soft-blue);
+  color: var(--project-navy);
+}
+
+code {
+  color: #173f5f;
+}
+
+.sidebar-title,
+.sidebar-item-text.active {
+  color: var(--project-navy) !important;
+  font-weight: 600;
+}

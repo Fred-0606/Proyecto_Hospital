@@ -1,0 +1,58 @@
+﻿---
+title: "Etapa 11 — Conclusiones"
+subtitle: "Síntesis de los dos modelos de demora"
+format: html
+execute:
+  enabled: false
+---
+
+## Propósito de la etapa
+
+Integrar los hallazgos del modelo de ingreso y del modelo de salida, manteniendo separados sus momentos de uso, predictores y limitaciones.
+
+La conclusión retomará las dos preguntas formuladas en la portada. Primero responderá qué fue posible predecir en cada momento; después explicará qué diferencias se observaron entre los procesos y qué limitaciones condicionan su aplicación.
+
+## Estructura prevista
+
+El relato final seguirá el orden del pipeline para que cada afirmación pueda rastrearse hasta una evidencia previa:
+
+1. Respuesta a la pregunta del modelo de ingreso.
+2. Respuesta a la pregunta del modelo de salida.
+3. Comparación de factores predictivos entre ambos procesos.
+4. Utilidad clínica y operativa potencial.
+5. Riesgos de fuga, calidad y actualización de variables.
+6. Validez externa y trabajo futuro.
+
+## Limitaciones que deberán permanecer visibles
+
+Las limitaciones no se relegarán a una nota final. Se integrarán en la interpretación de resultados para mostrar qué alcance permite realmente la fuente disponible.
+
+- El archivo conserva el último valor de campos actualizables.
+- La disponibilidad temporal se estableció con conocimiento clínico, pero algunas variables conservan riesgo residual.
+- Los casos con intervalos negativos deben tratarse por objetivo y documentarse.
+- El egreso medido por `fecha_salida` es administrativo, no necesariamente salida física.
+- Los resultados son predictivos y no demuestran relaciones causales.
+
+## Regla de cierre
+
+Ninguna afirmación final se redactará antes de disponer de las métricas de prueba y de las evidencias generadas en las etapas anteriores.
+
+De este modo, la conclusión será una síntesis respaldada por el pipeline y no una repetición de expectativas planteadas antes del modelado.
+
+## Trazabilidad de cada afirmación
+
+La versión final incluirá una tabla de trazabilidad. Cada conclusión cuantitativa
+deberá señalar el artefacto y la etapa que la sustentan, por ejemplo:
+
+| Afirmación | Evidencia requerida | Etapa de origen |
+|---|---|---|
+| Desempeño final del Modelo A | Métricas sobre prueba futura | 09 |
+| Desempeño final del Modelo B | Métricas sobre prueba futura | 09 |
+| Variables asociadas | Coeficientes o permutación | 10 |
+| Estabilidad temporal | Métricas de los cinco pliegues | 07–08 |
+| Limitaciones de la fuente | Auditorías de calidad y disponibilidad | 01–04 |
+
+Esta tabla impedirá presentar una expectativa metodológica como si fuera un
+hallazgo observado. La etapa 11 seguirá sin código de entrenamiento: su función
+será integrar resultados ya persistidos y verificables.
+

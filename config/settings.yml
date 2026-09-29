@@ -9,7 +9,8 @@ paths:
   outputs: "outputs"
 
 target:
-  prolonged_stay_hours: 12
+  ingreso_hours: 6
+  salida_hours: 6
 
 validation:
   earliest_date: "1900-01-01"

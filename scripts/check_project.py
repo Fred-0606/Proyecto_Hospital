@@ -9,7 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 REQUIRED_DIRECTORIES = (
@@ -22,11 +21,6 @@ REQUIRED_DIRECTORIES = (
     "src",
     "scripts",
     "outputs",
-    "outputs/figures",
-    "outputs/tables",
-    "outputs/metrics",
-    "outputs/models",
-    "outputs/reports",
     "tests",
 )
 

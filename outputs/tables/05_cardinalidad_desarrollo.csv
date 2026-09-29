@@ -1,0 +1,15 @@
+﻿modelo,variable,valores_unicos
+A,triage,6
+A,afiliacion,7
+A,dia_semana_ingreso,7
+A,mes_ingreso,12
+B,triage,6
+B,afiliacion,7
+B,especialidades_tratantes,388
+B,sala_observacion,15
+B,grupo_cama,24
+B,conducta,3
+B,dia_semana_ingreso,8
+B,mes_ingreso,13
+B,dia_semana_conducta,7
+B,mes_conducta,12

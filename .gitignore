@@ -37,6 +37,8 @@ outputs/tables/01_*
 # Protección explícita del archivo fuente sensible
 database_modificado.xlsx
 **/database_modificado.xlsx
+BD_CENSO_2024_2026.xlsx
+**/BD_CENSO_2024_2026.xlsx
 
 # Modelos serializados
 *.pkl

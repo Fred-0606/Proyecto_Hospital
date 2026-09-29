@@ -1,0 +1,5 @@
+﻿modelo,clase,etiqueta,registros,porcentaje
+Modelo A — ingreso,0,Menos de 6 horas,16651,48.41814480953766
+Modelo A — ingreso,1,6 horas o más,17739,51.58185519046234
+Modelo B — salida,0,Menos de 6 horas,23962,69.68128416889613
+Modelo B — salida,1,6 horas o más,10426,30.31871583110387

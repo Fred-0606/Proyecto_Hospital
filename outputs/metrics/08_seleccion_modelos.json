@@ -1,0 +1,44 @@
+{
+  "prueba_final_utilizada": false,
+  "pliegues_temporales": 5,
+  "metrica_principal": "pr_auc",
+  "umbral_comparacion": 0.5,
+  "seleccion": {
+    "A": {
+      "candidato": "regresion_logistica",
+      "hiperparametros": {
+        "clasificador__C": 1.0,
+        "clasificador__class_weight": null,
+        "clasificador__l1_ratio": 0.5
+      },
+      "umbral": 0.2817978707428111,
+      "metrica_seleccion": "pr_auc",
+      "regla_seleccion": "modelo_mas_simple_dentro_de_un_error_estandar",
+      "limite_equivalencia_pr_auc": 0.5809191606006344,
+      "pr_auc_validacion": 0.612152707171726,
+      "roc_auc_validacion": 0.600668449416629
+    },
+    "B": {
+      "candidato": "regresion_logistica",
+      "hiperparametros": {
+        "clasificador__C": 0.1,
+        "clasificador__class_weight": null,
+        "clasificador__l1_ratio": 0.0
+      },
+      "umbral": 0.2776236062837081,
+      "metrica_seleccion": "pr_auc",
+      "regla_seleccion": "modelo_mas_simple_dentro_de_un_error_estandar",
+      "limite_equivalencia_pr_auc": 0.6063637904471001,
+      "pr_auc_validacion": 0.6291958734999129,
+      "roc_auc_validacion": 0.7935954487704086
+    }
+  },
+  "artefactos": [
+    "08_busqueda_hiperparametros.csv",
+    "08_metricas_modelos_por_pliegue.csv",
+    "08_resumen_modelos.csv",
+    "08_umbrales_seleccionados.csv",
+    "08_comparacion_modelos.png",
+    "08_matrices_confusion_seleccionados.png"
+  ]
+}

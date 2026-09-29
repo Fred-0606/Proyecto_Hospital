@@ -1,0 +1,15 @@
+﻿columna,tipo_original,tipo_final,nulos_originales,nulos_finales,nulos_nuevos
+triage,string,string,35,0,0
+edad,string,Int64,161,322,161
+afiliacion,string,string,33,0,0
+especialidades_tratantes,string,string,98,0,0
+sala_observacion,string,string,83,0,0
+cama,string,string,1055,0,0
+fecha_ingreso,string,datetime64[us],0,5,5
+tiempo_en_ingreso,string,float64,19,33,14
+fecha_conducta,string,datetime64[us],11,14,3
+conducta,string,string,12,0,0
+total_en_salida,string,float64,105,114,9
+fecha_salida,datetime64[us],datetime64[us],2,2,0
+duracion_ingreso_calculada,creada_en_etapa_03,float64,0,71,0
+duracion_salida_calculada,creada_en_etapa_03,float64,0,44,0

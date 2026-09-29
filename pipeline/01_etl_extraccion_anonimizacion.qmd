@@ -1,0 +1,467 @@
+---
+title: "Etapa 01 — ETL de extracción y anonimización"
+subtitle: "Anonimización, reconocimiento y validación de la fuente original"
+format:
+  html:
+    code-fold: false
+    code-overflow: scroll
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+  freeze: false
+---
+
+## Propósito de la etapa
+
+Esta etapa realiza el primer contacto reproducible con la fuente hospitalaria. Se lee exclusivamente la hoja `CENSO`, se utiliza la segunda fila como encabezado, se anonimizan los identificadores directos y se documentan la estructura y los principales problemas de calidad. En este punto no se eliminan columnas, no se imputan valores y no se corrigen registros analíticos.
+
+El siguiente bloque carga la configuración y las funciones necesarias para ejecutar la validación informativa. El libro original permanecerá intacto durante todo el proceso.
+
+```{python}
+#| label: configuracion-etapa-01
+from IPython.display import Image, Markdown, display
+import pandas as pd
+import yaml
+
+from src.data_io import (
+    get_excel_sheet_names,
+    get_source_excel_path,
+    require_file,
+    require_sheet,
+)
+from src.paths import CONFIG_DIR, FIGURES_DIR
+from src.validation import run_stage_01
+
+with (CONFIG_DIR / "settings.yml").open(encoding="utf-8") as settings_file:
+    settings = yaml.safe_load(settings_file)
+
+earliest_date = settings["validation"]["earliest_date"]
+display(Markdown(
+    "La etapa no modifica el libro fuente y anonimiza los identificadores antes de guardar artefactos derivados."
+))
+```
+
+
+## Archivo analizado
+
+Antes de leer los datos se identifica la ruta construida desde la raíz del repositorio. Esto permite comprobar qué archivo será analizado sin depender del directorio desde el que se ejecute Quarto.
+
+```{python}
+#| label: archivo-analizado
+source_path = get_source_excel_path()
+display(Markdown(
+    f"Archivo fuente: `{source_path.relative_to(source_path.parents[2]).as_posix()}`"
+))
+```
+
+
+## Verificación de existencia
+
+La ejecución debe detenerse si el libro no está disponible. El siguiente control confirma su existencia y reporta su tamaño antes de iniciar una lectura potencialmente costosa.
+
+```{python}
+#| label: verificar-existencia
+require_file(
+    source_path,
+    "Ubique data/raw/BD_CENSO_2024_2026.xlsx antes de ejecutar la etapa 01.",
+)
+display(Markdown(
+    f"El archivo requerido existe y ocupa **{source_path.stat().st_size:,} bytes**."
+))
+```
+
+
+## Verificación de la hoja CENSO
+
+El libro puede contener varias hojas, pero el estudio utiliza únicamente `CENSO`. A continuación se comprueba que esa hoja exista y se contabilizan las hojas que quedarán fuera del análisis.
+
+```{python}
+#| label: verificar-hoja-censo
+sheet_names = get_excel_sheet_names(source_path)
+require_sheet(source_path, sheet_names, "CENSO")
+ignored_sheets = [name for name in sheet_names if name != "CENSO"]
+display(Markdown(
+    f"Se verificaron **{len(sheet_names):,}** nombres de hojas. "
+    f"`CENSO` existe y **{len(ignored_sheets):,}** hojas serán ignoradas."
+))
+```
+
+
+Solo se consultaron los nombres de las hojas; sus contenidos no se cargaron.
+
+## Lectura y anonimización del DataFrame
+
+Una vez verificada la fuente se ejecuta la ingesta y la validación. La primera fila del Excel se descarta y la segunda se utiliza como encabezado mediante `header=1`. Los encabezados técnicos se armonizan y normalizan para conservar el esquema utilizado por las etapas posteriores.
+
+### Anonimización
+
+Antes de escribir el primer Parquet se aplican las técnicas del notebook de referencia:
+
+- `identificacion`: hash SHA-256 con un salt aleatorio de 16 bytes generado con `os.urandom(16)`;
+- `nombre_paciente`: token UUID estable para cada nombre dentro de la ejecución;
+- columnas `user*` y `no_modificar*` que contienen correos: se conservan los dos primeros y los tres últimos caracteres y se reemplaza el interior por `*`.
+
+El salt y el mapa de tokens existen únicamente en memoria: no se guardan en archivos, métricas ni Git. Las columnas técnicas denominadas `NO MODIFICAR.*` que no contienen correos se armonizan con su significado analítico y no se enmascaran, pues incluyen fuentes de los objetivos. Todas las columnas sensibles anonimizadas se descartarán posteriormente en la etapa 02.
+
+La función orquestadora sigue este orden. Las flechas representan objetos en
+memoria; ninguna tabla cruda se publica durante el recorrido:
+
+```text
+Excel / hoja CENSO / header=1
+              ↓
+DataFrame original (solo memoria)
+              ↓
+armonización y normalización de nombres
+              ↓
+anonimización de identificadores directos
+              ↓
+DataFrame protegido -> Parquet identificado
+              ↓
+auditorías descriptivas -> CSV, figura y JSON
+```
+
+La lectura y las reglas sensibles permanecen en `src/` para no duplicarlas. El
+bloque siguiente conserva por separado el DataFrame original, el protegido y la
+auditoría; las secciones posteriores abren después cada diagnóstico individual.
+
+```{python}
+#| label: ejecutar-ingesta-validacion
+results = run_stage_01(earliest_date=earliest_date)
+df_censo_original = results["original_dataframe"]
+df_censo_identificado = results["dataframe"]
+anonymization_audit = results["anonymization_audit"]
+
+# Controles visibles de conservación de filas y consistencia del resumen.
+assert len(df_censo_original) == len(df_censo_identificado)
+assert anonymization_audit["columna"].is_unique
+assert results["dimensions"].loc[0, "filas"] == len(df_censo_identificado)
+
+display(Markdown(
+    f"La hoja `CENSO` produjo un DataFrame de **{len(df_censo_original):,} registros**. "
+    "Los identificadores directos fueron anonimizados antes de guardar el artefacto."
+))
+display(anonymization_audit)
+```
+
+
+### Punto inicial del análisis
+
+El `DataFrame` protegido constituye el punto inicial del análisis posterior, pero
+no se muestran filas individuales, incluso después de anonimizar identificadores
+directos. Esta precaución evita publicar textos clínicos, fechas específicas o
+combinaciones de variables que puedan funcionar como cuasi-identificadores. Las
+secciones siguientes presentan exclusivamente dimensiones, tipos y resúmenes
+agregados.
+
+Para facilitar la lectura se presenta una tabla creada manualmente. Sus valores
+son completamente ficticios: no corresponden a personas, atenciones ni filas
+transformadas del archivo hospitalario.
+
+```{python}
+#| label: ejemplo-estructural-ficticio
+ejemplo_ficticio = pd.DataFrame(
+    {
+        "triage": ["TRIAGE 2", "TRIAGE 3", "TRIAGE 4"],
+        "edad": [34, 57, 22],
+        "afiliacion": ["CONTRIBUTIVO", "SUBSIDIADO", "PARTICULAR"],
+        "especialidades_tratantes": [
+            "MEDICINA INTERNA",
+            "CIRUGIA GENERAL",
+            "ORTOPEDIA",
+        ],
+        "sala_observacion": ["SALA A", "SALA B", "SIN OBSERVACION"],
+        "fecha_ingreso": pd.to_datetime(
+            ["2099-01-10 08:15", "2099-01-10 12:40", "2099-01-11 06:20"]
+        ),
+        "fecha_conducta": pd.to_datetime(
+            ["2099-01-10 11:30", "2099-01-10 20:10", "2099-01-11 09:00"]
+        ),
+        "conducta": ["ALTA", "HOSPITALIZACION", "ALTA"],
+        "fecha_salida": pd.to_datetime(
+            ["2099-01-10 13:00", "2099-01-11 05:30", "2099-01-11 10:15"]
+        ),
+    }
+)
+display(ejemplo_ficticio)
+```
+
+Las fechas del año 2099 refuerzan que se trata únicamente de una representación
+didáctica de la estructura y del orden de los eventos.
+
+
+## Dimensiones
+
+La tabla siguiente resume el tamaño general de la fuente: filas, columnas, celdas informadas, celdas nulas y completitud global. La completitud representa la proporción de celdas que contienen información y no debe interpretarse como el porcentaje de pacientes completos.
+
+```{python}
+#| label: dimensiones
+dimensions = results["dimensions"]
+display(dimensions)
+dimension_row = dimensions.iloc[0]
+display(Markdown(
+    f"Se identificaron **{dimension_row['filas']:,.0f} filas**, "
+    f"**{dimension_row['columnas']:,.0f} columnas** y "
+    f"**{dimension_row['completitud_porcentaje']:.2f}%** de completitud global. "
+    "Evidencia: `outputs/tables/01_dimensiones.csv`."
+))
+```
+
+
+Las dimensiones se calcularon sobre la hoja completa, sin excluir registros ni variables.
+
+## Nombres de columnas
+
+Para mantener trazabilidad, la siguiente tabla relaciona cada encabezado original con el nombre normalizado que se utilizará en el pipeline. Esta correspondencia permite reconocer la variable de origen aunque se hayan retirado espacios, tildes o caracteres especiales del encabezado.
+
+```{python}
+#| label: nombres-columnas
+display(results["columns"])
+display(Markdown(
+    f"Se documentaron **{len(results['columns']):,}** correspondencias entre "
+    "encabezados originales y normalizados. Evidencia: `outputs/tables/01_columnas.csv`."
+))
+```
+
+
+La normalización afecta los encabezados y la anonimización modifica únicamente los identificadores directos documentados. Las variables analíticas permanecen intactas.
+
+## Tipos de datos
+
+La tabla siguiente presenta el tipo inferido por pandas y los tipos Python observados en cada columna. Esta revisión permite detectar campos que parecen numéricos o temporales, pero fueron almacenados como texto o contienen valores de naturaleza mixta.
+
+```{python}
+#| label: tipos-datos
+data_types = results["data_types"]
+display(data_types)
+mixed_count = int(data_types["contiene_tipos_mixtos"].sum())
+display(Markdown(
+    f"Se detectaron **{mixed_count:,}** columnas con más de un tipo Python real. "
+    "Evidencia: `outputs/tables/01_tipos_datos.csv`."
+))
+```
+
+
+Los tipos son inferencias iniciales y todavía no constituyen conversiones definitivas.
+
+## Valores nulos
+
+El análisis de faltantes se presenta en tres niveles. La primera tabla cuantifica los nulos por columna; la segunda muestra cuántos nulos aparecen simultáneamente en cada fila; finalmente, la gráfica facilita comparar visualmente el porcentaje de ausencia entre variables.
+
+```{python}
+#| label: valores-nulos
+display(results["nulls"])
+display(results["nulls_per_row"])
+total_nulls = int(results["dimensions"].iloc[0]["celdas_nulas"])
+display(Markdown(
+    f"El DataFrame contiene **{total_nulls:,}** celdas nulas. "
+    "Evidencias: `outputs/tables/01_valores_nulos.csv`, "
+    "`outputs/tables/01_nulos_por_fila.csv` y "
+    "`outputs/figures/01_valores_nulos.png`."
+))
+display(Image(filename=str(FIGURES_DIR / "01_valores_nulos.png")))
+```
+
+
+Los nulos se documentan sin imputación ni sustitución. Su tratamiento se decidirá después de analizar la disponibilidad y el significado de cada variable.
+
+## Duplicados
+
+La siguiente evidencia distingue el número de filas que pertenecen a duplicados
+exactos. Detectar una coincidencia no implica eliminarla automáticamente, porque
+dos atenciones diferentes podrían compartir los mismos valores observados. Para
+proteger la información hospitalaria no se muestra ni persiste una muestra de
+filas duplicadas.
+
+```{python}
+#| label: duplicados
+display(results["duplicate_summary"])
+duplicate_count = int(results["duplicate_summary"].iloc[0]["filas_duplicadas_exactas"])
+display(Markdown(
+    f"Se identificaron **{duplicate_count:,}** filas pertenecientes a duplicados exactos. "
+    "Evidencia agregada: `outputs/tables/01_resumen_duplicados.csv`."
+))
+```
+
+
+Los duplicados permanecen en la fuente validada hasta que exista una regla de tratamiento justificada.
+
+## Columnas vacías, constantes o dominadas
+
+Una columna completamente vacía o con un único valor no puede diferenciar registros. También se señalan columnas en las que un solo valor representa más del 95 %, ya que su baja variación podría limitar el aporte analítico.
+
+La siguiente tabla muestra exclusivamente las columnas que cumplen al menos una de esas condiciones, en lugar de desplegar nuevamente todas las variables.
+
+```{python}
+#| label: columnas-vacias-constantes
+empty_constants = results["empty_constants"]
+flagged_mask = (
+    empty_constants["completamente_vacia"]
+    | empty_constants["unico_valor_no_nulo"]
+    | empty_constants["mas_95_porcentaje_mismo_valor"]
+)
+flagged_empty_constants = empty_constants.loc[flagged_mask].copy()
+display(flagged_empty_constants)
+
+flagged_columns = len(flagged_empty_constants)
+display(Markdown(
+    f"Se muestran las **{flagged_columns:,} columnas** marcadas por vacío, "
+    "constancia o dominancia. Evidencia completa: "
+    "`outputs/tables/01_columnas_vacias_constantes.csv`."
+))
+```
+
+
+Esta etapa solo presenta la evidencia. La exclusión efectiva de columnas de varianza cero se documenta en la etapa 02 mediante `VarianceThreshold`, antes de seleccionar las vistas analíticas.
+
+## Problemas de texto
+
+Los campos textuales pueden contener espacios innecesarios, diferencias de capitalización o palabras utilizadas para representar nulos. Las dos tablas siguientes resumen esos problemas y muestran los marcadores textuales encontrados sin corregirlos todavía.
+
+```{python}
+#| label: problemas-texto
+display(results["text_problems"])
+display(results["textual_nulls"])
+textual_null_count = (
+    int(results["textual_nulls"]["cantidad"].sum())
+    if "cantidad" in results["textual_nulls"]
+    else 0
+)
+display(Markdown(
+    f"Se detectaron **{textual_null_count:,}** apariciones de marcadores textuales "
+    "de posibles nulos. Evidencias: `outputs/tables/01_problemas_texto.csv` y "
+    "`outputs/tables/01_nulos_representados_como_texto.csv`."
+))
+```
+
+
+Los textos se inspeccionaron, pero no fueron recortados, sustituidos ni consolidados.
+
+## Variables categóricas
+
+Las siguientes tablas describen columnas con una cardinalidad adecuada para inspección: cantidad de categorías, frecuencias observadas y posibles equivalencias producidas por diferencias de escritura. Estas equivalencias son alertas mecánicas y requieren interpretación antes de consolidar valores.
+
+```{python}
+#| label: variables-categoricas
+display(results["category_summary"])
+display(results["category_frequencies"])
+display(results["category_equivalences"])
+display(Markdown(
+    f"Se resumieron **{len(results['category_summary']):,}** columnas de cardinalidad "
+    "razonable. Evidencias: `outputs/tables/01_resumen_categorias.csv`, "
+    "`outputs/tables/01_frecuencias_categorias.csv` y "
+    "`outputs/tables/01_posibles_categorias_equivalentes.csv`."
+))
+```
+
+
+Ninguna categoría fue reemplazada durante esta etapa.
+
+## Memoria y tamaño
+
+La tabla siguiente compara la memoria estimada del DataFrame, el tamaño del libro Excel y el tamaño de la copia Parquet. Esta información permite anticipar los recursos necesarios para las etapas posteriores.
+
+```{python}
+#| label: memoria-tamano
+display(results["memory"])
+memory_total = int(
+    results["memory"].loc[
+        results["memory"]["elemento"] == "dataframe_total",
+        "memoria_bytes",
+    ].iloc[0]
+)
+display(Markdown(
+    f"El DataFrame utiliza **{memory_total:,} bytes** según la estimación profunda de pandas. "
+    "Evidencia: `outputs/tables/01_memoria_dataframe.csv`."
+))
+```
+
+
+El formato Parquet será el medio de intercambio entre etapas porque conserva la estructura tabular y evita releer el libro completo.
+
+## Resumen de validaciones
+
+La siguiente tabla integra los controles anteriores y asigna un estado a cada grupo de validación. Después se presenta el conteo de estados para obtener una visión general de los aspectos que requieren revisión.
+
+```{python}
+#| label: resumen-validaciones
+display(results["validation_summary"])
+status_counts = results["validation_summary"]["estado"].value_counts()
+display(status_counts.rename_axis("estado").reset_index(name="cantidad"))
+display(Markdown(
+    "Evidencias: `outputs/tables/01_resumen_validaciones.csv` y "
+    "`outputs/metrics/01_resumen_validaciones.json`."
+))
+```
+
+
+Los estados proceden de reglas programadas y funcionan como guía para las decisiones de limpieza, no como una calificación clínica del dataset.
+
+## Evidencias generadas
+
+Para asegurar reproducibilidad, la tabla siguiente enumera cada archivo producido, confirma su existencia y reporta su tamaño. Esta revisión permite comprobar que la etapa terminó completamente antes de continuar.
+
+```{python}
+#| label: evidencias-generadas
+evidence_table = pd.DataFrame(
+    {
+        "ruta": [
+            path.relative_to(source_path.parents[2]).as_posix()
+            for path in results["evidence_paths"]
+        ],
+        "existe": [path.is_file() for path in results["evidence_paths"]],
+        "tamano_bytes": [path.stat().st_size for path in results["evidence_paths"]],
+    }
+)
+display(evidence_table)
+display(Markdown(
+    f"Se registraron **{len(evidence_table):,}** archivos de salida y "
+    f"**{int(evidence_table['existe'].sum()):,}** existen al finalizar la etapa."
+))
+```
+
+
+La salida principal es `data/interim/01_censo_identificado.parquet`; los metadatos se almacenan en `outputs/metrics/01_metadatos_ingesta.json`.
+
+## Aspectos que deberán tratarse en la etapa 02
+
+La última tabla de diagnóstico reúne únicamente los grupos cuyo estado no es `OK`. Su propósito es convertir los hallazgos de esta etapa en una agenda explícita para la limpieza.
+
+```{python}
+#| label: pendientes-etapa-02
+pending = results["validation_summary"].loc[
+    results["validation_summary"]["estado"].ne("OK"),
+    ["validacion", "estado", "observacion_automatica"],
+]
+display(pending)
+display(Markdown(
+    f"Quedaron **{len(pending):,}** grupos de validación con advertencias o revisión "
+    "requerida. La etapa 02 decidirá su tratamiento sin alterar el Excel original."
+))
+```
+
+
+Las decisiones de transformación quedan deliberadamente fuera de la ingesta.
+
+## Conclusiones de la etapa
+
+La etapa concluye con una síntesis calculada a partir de los metadatos. Este resumen confirma el alcance de la fuente examinada y recuerda que los problemas detectados todavía permanecen en el artefacto validado.
+
+```{python}
+#| label: conclusiones-etapa-01
+metadata = results["metadata"]
+display(Markdown(
+    f"La etapa identificó **{metadata['numero_registros']:,} registros** y "
+    f"**{metadata['numero_columnas']:,} columnas** de la hoja `CENSO`. "
+    f"Se conservaron **{metadata['numero_total_nulos']:,} valores nulos** y "
+    f"**{metadata['numero_duplicados_exactos']:,} filas pertenecientes a duplicados exactos** "
+    "sin aplicar correcciones. Las decisiones posteriores deberán basarse en las evidencias "
+    "generadas y en reglas explícitas de la etapa 02."
+))
+```
+
+
+La huella SHA-256 y las rutas de salida permiten identificar la versión analizada y auditar la ejecución.

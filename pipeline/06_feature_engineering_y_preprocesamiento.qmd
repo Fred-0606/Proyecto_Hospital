@@ -1,0 +1,170 @@
+---
+title: "Etapa 06 — Feature engineering y preprocesamiento"
+subtitle: "Variables interpretables y transformaciones ajustadas solo con entrenamiento"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+Esta etapa documenta qué variables se derivan para cada modelo y cómo se
+transforman antes del ajuste. Las reglas determinísticas se muestran de forma
+explícita y las operaciones que aprenden estadísticas permanecen dentro de los
+pipelines para evitar fuga de información.
+
+## Dependencia del EDA y lectura de desarrollo
+
+```{python}
+#| label: cargar-etapa-06
+from IPython.display import Markdown, display
+import pandas as pd
+
+from src.data_io import require_file, save_json
+from src.paths import METRICS_DIR
+from src.preprocessing import (
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_A_PREDICTORS,
+    MODEL_A_TARGET,
+    MODEL_B_DEVELOPMENT_PATH,
+    MODEL_B_PREDICTORS,
+    MODEL_B_TARGET,
+    build_expanding_time_splits,
+    build_model_a_preprocessor,
+    build_model_b_preprocessor,
+)
+
+EDA_METRICS_PATH = METRICS_DIR / "05_eda_desarrollo.json"
+require_file(EDA_METRICS_PATH, "Ejecute primero la etapa 05 de EDA.")
+require_file(MODEL_A_DEVELOPMENT_PATH, "Ejecute primero la etapa 04.")
+require_file(MODEL_B_DEVELOPMENT_PATH, "Ejecute primero la etapa 04.")
+
+desarrollo_a = pd.read_parquet(MODEL_A_DEVELOPMENT_PATH)
+desarrollo_b = pd.read_parquet(MODEL_B_DEVELOPMENT_PATH)
+```
+
+## Variables derivadas visibles
+
+A partir de `fecha_ingreso` se crean, para ambos modelos:
+
+```python
+hora_ingreso = fecha_ingreso.dt.hour
+dia_semana_ingreso = fecha_ingreso.dt.dayofweek
+mes_ingreso = fecha_ingreso.dt.month
+fin_semana_ingreso = fecha_ingreso.dt.dayofweek >= 5
+```
+
+Para el Modelo A también se incorpora la presión operativa reciente mediante
+tres conteos disponibles al momento del ingreso:
+
+```python
+volumen_ingresos_3h = ingresos en [fecha_ingreso - 3 horas, fecha_ingreso)
+volumen_ingresos_6h = ingresos en [fecha_ingreso - 6 horas, fecha_ingreso)
+volumen_ingresos_24h = ingresos en [fecha_ingreso - 24 horas, fecha_ingreso)
+```
+
+El extremo derecho es abierto: no se cuenta la atención actual ni otras con la
+misma marca temporal. Tampoco se utilizan ingresos posteriores. Los conteos se
+construyen antes de excluir registros cuyo objetivo no puede calcularse, de modo
+que representan el volumen observable de ingresos y no solo los casos que
+terminan en el conjunto de modelado. Estas variables aproximan carga reciente,
+pero no equivalen a ocupación, número de camas disponibles ni personal en turno.
+
+El Modelo B añade las mismas cuatro transformaciones desde `fecha_conducta` y
+agrupa el código individual de cama en área y tipo operativo. También utiliza
+`duracion_ingreso_calculada`, porque el proceso A ya terminó cuando comienza B.
+
+Además, se reconstruyen dos indicadores de carga activa justo antes de registrar
+la conducta del paciente evaluado:
+
+```text
+pacientes_activos_en_ingreso
+= otros pacientes que ya ingresaron y aún no habían completado su conducta
+
+pacientes_pendientes_de_salida
+= otros pacientes con conducta previa y sin salida registrada hasta ese instante
+```
+
+El paciente actual se excluye de ambos conteos. Las variables solo utilizan
+eventos conocidos hasta el momento de predicción y no incorporan cuánto tardará
+en salir ningún paciente. Son aproximaciones de presión operativa construidas
+desde marcas temporales completas; no equivalen a ocupación física, camas
+disponibles ni dotación de personal y dependen de la calidad de esos registros.
+
+```{python}
+#| label: predictores-etapa-06
+display(pd.DataFrame({"predictores_modelo_a": pd.Series(MODEL_A_PREDICTORS)}))
+display(pd.DataFrame({"predictores_modelo_b": pd.Series(MODEL_B_PREDICTORS)}))
+```
+
+No se incorporan fecha de conducta en A, fecha de salida, duración de salida ni
+ninguna variable registrada después del instante correspondiente.
+
+## Transformaciones antes del modelo
+
+| Tipo de variable | Transformación |
+|---|---|
+| Edad, volúmenes recientes de A y carga activa de B | Mediana del entrenamiento y `StandardScaler` |
+| Duración de ingreso en B | Mediana, indicador de ausencia y escalamiento |
+| Categóricas | Categoría explícita y `OneHotEncoder(handle_unknown="ignore")` |
+| Especialidades de B | Indicadores binarios mediante `CountVectorizer` |
+
+Los objetos concretos pueden inspeccionarse directamente:
+
+```{python}
+#| label: mostrar-preprocesadores-etapa-06
+preprocesador_a = build_model_a_preprocessor()
+preprocesador_b = build_model_b_preprocessor()
+display(preprocesador_a)
+display(preprocesador_b)
+```
+
+## Demostración sin fuga
+
+Se ajusta cada transformador únicamente con el entrenamiento del primer pliegue
+y después se aplica, sin volver a ajustarlo, a su validación posterior.
+
+```{python}
+#| label: demostrar-fit-transform-etapa-06
+pliegue_a = build_expanding_time_splits(desarrollo_a, MODEL_A_TARGET)[0]
+indices_entrenamiento_a, indices_validacion_a = pliegue_a
+
+X_entrenamiento_a = desarrollo_a.iloc[indices_entrenamiento_a][MODEL_A_PREDICTORS]
+X_validacion_a = desarrollo_a.iloc[indices_validacion_a][MODEL_A_PREDICTORS]
+
+matriz_entrenamiento_a = preprocesador_a.fit_transform(X_entrenamiento_a)
+matriz_validacion_a = preprocesador_a.transform(X_validacion_a)
+
+display(pd.DataFrame({
+    "particion": ["entrenamiento", "validacion"],
+    "filas": [matriz_entrenamiento_a.shape[0], matriz_validacion_a.shape[0]],
+    "columnas_transformadas": [
+        matriz_entrenamiento_a.shape[1],
+        matriz_validacion_a.shape[1],
+    ],
+}))
+```
+
+La igualdad del número de columnas confirma que validación usa el vocabulario
+aprendido con entrenamiento y no crea nuevas categorías.
+
+## Entrega a modelado
+
+```{python}
+#| label: guardar-etapa-06
+FEATURES_METRICS_PATH = METRICS_DIR / "06_feature_engineering_preprocesamiento.json"
+save_json({
+    "prueba_utilizada": False,
+    "predictores_modelo_a": MODEL_A_PREDICTORS,
+    "predictores_modelo_b": MODEL_B_PREDICTORS,
+    "ajuste_transformadores": "solo_entrenamiento_de_cada_pliegue",
+}, FEATURES_METRICS_PATH)
+display(Markdown(f"Entrega: `{FEATURES_METRICS_PATH.relative_to(FEATURES_METRICS_PATH.parents[2])}`"))
+```

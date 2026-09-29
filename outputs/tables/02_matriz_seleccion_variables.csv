@@ -1,0 +1,41 @@
+﻿columna,modelo_a,modelo_b,rol,justificacion
+triage,incluir,incluir,predictora,Disponible antes de ambos instantes de predicción.
+identificacion,excluir,excluir,descartada,Identificador consecutivo sin valor predictivo.
+nombre_paciente,excluir,excluir,descartada,Dato personal sin valor analítico.
+edad,incluir,incluir,predictora,Disponible antes de ambos instantes de predicción.
+afiliacion,incluir,incluir,predictora,Disponible antes de ambos instantes de predicción.
+eapb,excluir,excluir,descartada,Más del 60 % de sus valores están ausentes.
+diagnostico,excluir,excluir,descartada,Diagnóstico definitivo y actualizado; contiene información tardía.
+especialidades_tratantes,excluir,incluir,predictora,No garantizada al predecir A; disponible con cautela para B.
+sala_observacion,excluir,incluir,predictora,No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.
+cama,excluir,incluir,predictora,No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.
+status,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.
+user,excluir,excluir,descartada,Usuario/correo: información sensible de operación.
+fecha_ingreso,incluir,incluir,predictora,Disponible antes de ambos instantes de predicción.
+observaciones_y_pendientes,excluir,excluir,descartada,Texto libre con riesgo de fuga de información.
+user_1,excluir,excluir,descartada,Usuario/correo: información sensible de operación.
+ultima_valoracion,excluir,excluir,descartada,Tiempo intermedio que no corresponde a los objetivos.
+meta_estancia,excluir,excluir,control_objetivo,Umbral redundante con la definición del objetivo A.
+tiempo_en_ingreso,excluir,incluir,predictora,Desenlace continuo de A; historia ya finalizada para B.
+dd_hh,excluir,excluir,control_objetivo,Representación redundante del tiempo de ingreso.
+clase_ingreso,excluir,excluir,control_objetivo,Categoriza directamente el desenlace A.
+user_2,excluir,excluir,descartada,Usuario/correo: información sensible de operación.
+fecha_conducta,excluir,incluir,predictora,Fin del objetivo A; instante conocido y transformable para B.
+conducta,excluir,incluir,predictora,Desconocida para A; se registra en el instante de predicción B.
+clasificacion,excluir,excluir,descartada,Clasificación final relacionada directamente con los desenlaces.
+observaciones_y_pendientes__2,excluir,excluir,descartada,Texto libre con riesgo de fuga de información.
+no_modificar,excluir,excluir,descartada,Campo técnico/sensible sin uso analítico.
+ultima_valoracion_1,excluir,excluir,descartada,Tiempo intermedio que no corresponde a los objetivos.
+fecha_limite_salida_servicio,excluir,excluir,control_objetivo,Equivale a fecha_conducta más el umbral de seis horas.
+total_en_salida,excluir,excluir,control_objetivo,Duración original de B; solo control de calidad.
+no_modificar_1,excluir,excluir,descartada,Campo técnico/sensible sin uso analítico.
+clase_salida,excluir,excluir,control_objetivo,Categoriza directamente el desenlace B.
+no_modificar_2,excluir,excluir,descartada,Campo técnico/sensible sin uso analítico.
+fecha_salida,excluir,excluir,control_objetivo,Extremo final del objetivo B; solo fuente del objetivo.
+estado_salida,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.
+2,excluir,excluir,descartada,Más del 60 % de sus valores están ausentes.
+class,excluir,excluir,descartada,La inspección manual no encontró información útil.
+ingreso_orden_6_hrs,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.
+orden_salida_6_hrs,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.
+ingreso_salida_12_hrs,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.
+dias,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.

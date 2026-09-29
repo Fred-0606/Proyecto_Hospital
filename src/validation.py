@@ -2,34 +2,39 @@
 
 from __future__ import annotations
 
-import math
 import re
 import string
 import unicodedata
-from collections import Counter
+from collections.abc import Iterable
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pandas.api import types as ptypes
 
+from src.anonymization import anonymize_direct_identifiers
 from src.data_io import (
     build_ingestion_metadata,
+    get_excel_sheet_names,
     get_identified_parquet_path,
     get_source_excel_path,
-    get_excel_sheet_names,
-    normalize_dataframe_columns,
+    harmonize_source_columns,
     identify_mixed_object_columns,
+    normalize_dataframe_columns,
     project_relative_path,
     read_censo_sheet,
+    save_dataframe_as_csv,
     save_dataframe_as_parquet,
     save_ingestion_metadata,
     save_json,
 )
 from src.paths import FIGURES_DIR, METRICS_DIR, TABLES_DIR
+
+matplotlib.use("Agg")
 
 
 TEXT_NULL_TOKENS = {
@@ -79,7 +84,7 @@ DATE_NAME_EXCLUSIONS = {
 }
 
 
-def _percentage(numerator: int | float, denominator: int | float) -> float:
+def _percentage(numerator: float, denominator: float) -> float:
     """Calcula un porcentaje seguro."""
     return float(numerator / denominator * 100) if denominator else 0.0
 
@@ -97,18 +102,6 @@ def _category_key(value: object) -> str:
     """Crea una clave comparable ignorando espacios, tildes y puntuación."""
     text = _fold_text(value)
     return "".join(character for character in text if character not in string.punctuation)
-
-
-def _write_csv(dataframe: pd.DataFrame, path: Path) -> Path:
-    """Guarda una evidencia tabular en CSV UTF-8."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    table = (
-        dataframe
-        if len(dataframe.columns) > 0
-        else pd.DataFrame(columns=["sin_hallazgos"])
-    )
-    table.to_csv(path, index=False, encoding="utf-8")
-    return path
 
 
 def calculate_dimensions(dataframe: pd.DataFrame) -> pd.DataFrame:
@@ -254,7 +247,7 @@ def analyze_exact_duplicates(
     summary = {
         "filas_duplicadas_exactas": duplicate_count,
         "filas_duplicadas_porcentaje": _percentage(duplicate_count, len(dataframe)),
-        "grupos_duplicados": int(len(group_sizes)),
+        "grupos_duplicados": len(group_sizes),
         "tamano_maximo_grupo": int(group_sizes.max()) if not group_sizes.empty else 0,
         "indices_duplicados": [int(index) for index in dataframe.index[duplicated_mask]],
     }
@@ -846,7 +839,7 @@ def build_validation_summary(
                 int(temporal_count > 0),
                 temporal_count,
                 total_rows,
-                TABLES_DIR / "01_inconsistencias_temporales.csv",
+                TABLES_DIR / "01_consistencia_temporal.csv",
                 "No se detectaron fechas finales anteriores a las iniciales.",
                 "Se detectaron {cantidad} inconsistencias temporales preliminares.",
                 review=True,
@@ -855,18 +848,18 @@ def build_validation_summary(
     )
 
 
-def _empty_with_columns(columns: list[str]) -> pd.DataFrame:
-    """Crea una tabla vacía con esquema estable para evidencias."""
-    return pd.DataFrame(columns=columns)
-
-
 def run_stage_01(earliest_date: str = "1900-01-01") -> dict[str, Any]:
     """Ejecuta la ingesta informativa completa y guarda todas las evidencias."""
     source_path = get_source_excel_path()
     sheet_names = get_excel_sheet_names(source_path)
     original_dataframe = read_censo_sheet(source_path)
     preserved_copy = original_dataframe.copy(deep=True)
-    dataframe, original_by_normalized = normalize_dataframe_columns(original_dataframe)
+    harmonized_dataframe = harmonize_source_columns(original_dataframe)
+    dataframe, _ = normalize_dataframe_columns(harmonized_dataframe)
+    original_by_normalized = dict(
+        zip(dataframe.columns, map(str, original_dataframe.columns), strict=True)
+    )
+    dataframe, anonymization_audit = anonymize_direct_identifiers(dataframe)
     if not original_dataframe.equals(preserved_copy):
         raise RuntimeError("La copia original cambió durante la etapa de identificación.")
 
@@ -903,13 +896,13 @@ def run_stage_01(earliest_date: str = "1900-01-01") -> dict[str, Any]:
     )
 
     tables: dict[str, pd.DataFrame] = {
+        "01_auditoria_anonimizacion.csv": anonymization_audit,
         "01_dimensiones.csv": dimensions,
         "01_columnas.csv": columns,
         "01_tipos_datos.csv": data_types,
         "01_valores_nulos.csv": nulls,
         "01_nulos_por_fila.csv": nulls_per_row,
         "01_resumen_duplicados.csv": duplicate_table,
-        "01_ejemplos_duplicados.csv": duplicate_examples,
         "01_identificadores_candidatos.csv": identifiers,
         "01_columnas_vacias_constantes.csv": empty_constants,
         "01_problemas_texto.csv": text_problems,
@@ -921,15 +914,15 @@ def run_stage_01(earliest_date: str = "1900-01-01") -> dict[str, Any]:
         "01_valores_extremos_iqr.csv": numeric_outliers,
         "01_columnas_fecha_candidatas.csv": date_candidates,
         "01_resultado_conversion_fechas.csv": date_results,
-        "01_fechas_no_convertibles.csv": date_failures,
         "01_consistencia_temporal.csv": temporal_summary,
-        "01_inconsistencias_temporales.csv": temporal_inconsistencies,
         "01_clasificacion_preliminar_variables.csv": classification,
         "01_memoria_dataframe.csv": memory,
         "01_resumen_validaciones.csv": validation_summary,
     }
     for filename, table in tables.items():
-        evidence_paths.append(_write_csv(table, TABLES_DIR / filename))
+        evidence_paths.append(
+            save_dataframe_as_csv(table, TABLES_DIR / filename, encoding="utf-8")
+        )
 
     figure_path = plot_missing_values(dataframe, FIGURES_DIR / "01_valores_nulos.png")
     evidence_paths.append(figure_path)
@@ -955,11 +948,18 @@ def run_stage_01(earliest_date: str = "1900-01-01") -> dict[str, Any]:
         + [METRICS_DIR / "01_metadatos_ingesta.json"],
         parquet_string_columns=parquet_string_columns,
     )
+    metadata["anonimizacion"] = {
+        "aplicada_antes_de_guardar_parquet": True,
+        "salt_persistido": False,
+        "mapa_tokens_persistido": False,
+        "transformaciones": anonymization_audit.to_dict(orient="records"),
+    }
     metadata_path = save_ingestion_metadata(metadata)
     evidence_paths.append(metadata_path)
 
     return {
         "dataframe": dataframe,
+        "anonymization_audit": anonymization_audit,
         "original_dataframe": preserved_copy,
         "column_mapping": original_by_normalized,
         "sheet_names": sheet_names,

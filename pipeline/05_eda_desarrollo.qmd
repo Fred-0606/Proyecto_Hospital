@@ -1,0 +1,131 @@
+---
+title: "Etapa 05 — Análisis exploratorio de datos"
+subtitle: "EDA exclusivamente sobre los conjuntos de desarrollo"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
+execute:
+  echo: true
+  output: true
+  error: false
+  warning: false
+---
+
+## Propósito de la etapa
+
+Esta etapa describe distribuciones, faltantes, balance y patrones operativos sin
+consultar la prueba futura. El objetivo del EDA es comprender los datos de
+desarrollo y detectar problemas que deban quedar documentados antes de modelar.
+
+## Lectura exclusiva de desarrollo
+
+```{python}
+#| label: cargar-desarrollo-etapa-05
+from IPython.display import Markdown, display
+import pandas as pd
+
+from src.data_io import require_file, save_dataframe_as_csv, save_json
+from src.features import (
+    build_categorical_cardinality,
+    build_duration_summary,
+    build_rate_by_category,
+    build_rate_by_reference_hour,
+    build_specialty_frequency,
+    build_target_balance,
+)
+from src.paths import METRICS_DIR, TABLES_DIR
+from src.preprocessing import (
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_B_DEVELOPMENT_PATH,
+)
+
+for ruta in (MODEL_A_DEVELOPMENT_PATH, MODEL_B_DEVELOPMENT_PATH):
+    require_file(ruta, "Ejecute primero la etapa 04 para reservar desarrollo y prueba.")
+
+desarrollo_a = pd.read_parquet(MODEL_A_DEVELOPMENT_PATH)
+desarrollo_b = pd.read_parquet(MODEL_B_DEVELOPMENT_PATH)
+
+display(pd.DataFrame({
+    "modelo": ["A", "B"],
+    "registros_desarrollo": [len(desarrollo_a), len(desarrollo_b)],
+    "inicio": [desarrollo_a.fecha_referencia.min(), desarrollo_b.fecha_referencia.min()],
+    "fin": [desarrollo_a.fecha_referencia.max(), desarrollo_b.fecha_referencia.max()],
+}))
+```
+
+No se importan los archivos `04_ingreso_prueba.parquet` ni
+`04_salida_prueba.parquet`.
+
+## Balance y distribución de los tiempos
+
+```{python}
+#| label: balance-duraciones-etapa-05
+balance = build_target_balance(desarrollo_a, desarrollo_b)
+duraciones = build_duration_summary(desarrollo_a, desarrollo_b)
+display(balance)
+display(duraciones)
+```
+
+## Faltantes y cardinalidad
+
+```{python}
+#| label: calidad-desarrollo-etapa-05
+faltantes = pd.concat([
+    desarrollo_a.isna().sum().rename("nulos").to_frame().assign(modelo="A"),
+    desarrollo_b.isna().sum().rename("nulos").to_frame().assign(modelo="B"),
+]).reset_index(names="variable")
+cardinalidad = build_categorical_cardinality(desarrollo_a, desarrollo_b)
+display(faltantes.loc[faltantes["nulos"].gt(0)])
+display(cardinalidad)
+```
+
+## Patrones disponibles al predecir
+
+```{python}
+#| label: patrones-etapa-05
+tasas_triage = build_rate_by_category(desarrollo_a, desarrollo_b, "triage")
+tasas_hora = build_rate_by_reference_hour(desarrollo_a, desarrollo_b)
+especialidades = build_specialty_frequency(desarrollo_b)
+display(tasas_triage)
+display(tasas_hora)
+display(especialidades)
+```
+
+Estas asociaciones son descriptivas. No prueban causalidad ni sustituyen la
+validación temporal de los modelos.
+
+## Evidencias y entrega a la etapa 06
+
+```{python}
+#| label: guardar-eda-etapa-05
+rutas_tablas = {
+    "balance": TABLES_DIR / "05_balance_objetivos_desarrollo.csv",
+    "duraciones": TABLES_DIR / "05_resumen_duraciones_desarrollo.csv",
+    "faltantes": TABLES_DIR / "05_faltantes_desarrollo.csv",
+    "cardinalidad": TABLES_DIR / "05_cardinalidad_desarrollo.csv",
+    "triage": TABLES_DIR / "05_tasa_por_triage_desarrollo.csv",
+    "hora": TABLES_DIR / "05_tasa_por_hora_desarrollo.csv",
+    "especialidades": TABLES_DIR / "05_especialidades_desarrollo.csv",
+}
+for tabla, ruta in (
+    (balance, rutas_tablas["balance"]),
+    (duraciones, rutas_tablas["duraciones"]),
+    (faltantes, rutas_tablas["faltantes"]),
+    (cardinalidad, rutas_tablas["cardinalidad"]),
+    (tasas_triage, rutas_tablas["triage"]),
+    (tasas_hora, rutas_tablas["hora"]),
+    (especialidades, rutas_tablas["especialidades"]),
+):
+    save_dataframe_as_csv(tabla, ruta)
+
+EDA_METRICS_PATH = METRICS_DIR / "05_eda_desarrollo.json"
+save_json({
+    "prueba_utilizada": False,
+    "registros_desarrollo_a": len(desarrollo_a),
+    "registros_desarrollo_b": len(desarrollo_b),
+    "artefactos": [ruta.name for ruta in rutas_tablas.values()],
+}, EDA_METRICS_PATH)
+display(Markdown(f"Entrega: `{EDA_METRICS_PATH.relative_to(EDA_METRICS_PATH.parents[2])}`"))
+```

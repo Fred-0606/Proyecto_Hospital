@@ -1,0 +1,79 @@
+﻿---
+title: "Etapa 10 — Interpretabilidad"
+subtitle: "Factores predictivos en cada momento operativo"
+format: html
+execute:
+  enabled: false
+---
+
+## Propósito de la etapa
+
+Explicar qué variables se asocian con las predicciones de ingreso y salida, sin convertir asociaciones en conclusiones causales.
+
+Una métrica resume cuánto acierta un modelo, pero no explica qué información utiliza. Esta etapa traducirá el comportamiento estadístico en patrones comprensibles para lectores clínicos y técnicos.
+
+## Preguntas interpretativas
+
+Las explicaciones se organizarán según el momento operativo, porque una misma variable puede tener un significado diferente antes y después de la conducta.
+
+### Modelo de ingreso
+
+- ¿Qué información disponible después del triage aumenta o reduce la predicción de demora?
+- ¿Las variables operativas dominan sobre las características iniciales del paciente?
+- ¿El comportamiento se mantiene entre turnos y niveles de triage?
+
+### Modelo de salida
+
+- ¿Qué papel tienen la conducta y el tiempo ya consumido en ingreso?
+- ¿La ubicación inicial aporta información estable o refleja disponibilidad circunstancial?
+- ¿Las explicaciones son consistentes en los diferentes periodos temporales?
+
+## Métodos previstos
+
+Se elegirá el método más sencillo compatible con cada modelo seleccionado. La intención no es acumular gráficos de explicabilidad, sino responder preguntas concretas sobre estabilidad y plausibilidad.
+
+- Coeficientes estandarizados para modelos lineales.
+- Importancia por permutación calculada sobre validación o prueba.
+- Explicaciones locales agregadas solo cuando sean necesarias.
+
+No se publicarán textos clínicos ni registros individuales.
+
+Cada hallazgo se describirá como asociación predictiva. Incluso una variable muy importante puede representar organización del servicio, disponibilidad o documentación, y no una causa directa de la demora.
+
+## Cómo se calcularán las explicaciones
+
+El documento distinguirá el método utilizado y los datos sobre los que se
+calcula. Para una regresión logística, cada coeficiente se vinculará con el nombre
+de la columna producida por el preprocesador:
+
+```python
+feature_names = fitted_pipeline[
+    "preprocesamiento"
+].get_feature_names_out()
+coefficients = fitted_pipeline["clasificador"].coef_[0]
+
+coefficient_table = pd.DataFrame({
+    "variable_transformada": feature_names,
+    "coeficiente": coefficients,
+    "odds_ratio": np.exp(coefficients),
+}).sort_values("coeficiente", key=abs, ascending=False)
+```
+
+Para modelos no lineales se mostrará explícitamente la permutación sobre un
+conjunto reservado. La variable se permuta y se mide la pérdida de desempeño; no
+se utilizará la importancia interna del árbol como sustituto automático:
+
+```python
+permutation = permutation_importance(
+    fitted_pipeline,
+    X_evaluation,
+    y_evaluation,
+    scoring="average_precision",
+    n_repeats=20,
+    random_state=42,
+)
+```
+
+Estos bloques fijan el procedimiento que deberá quedar visible cuando exista un
+modelo seleccionado; todavía no generan interpretaciones.
+

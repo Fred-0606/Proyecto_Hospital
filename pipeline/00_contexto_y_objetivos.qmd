@@ -1,0 +1,174 @@
+---
+title: "Etapa 00 — Contexto y objetivos del estudio"
+subtitle: "Predicción de estancias prolongadas en el servicio hospitalario de urgencias"
+format: html
+execute:
+  enabled: false
+---
+
+## Propósito de la etapa
+
+Esta etapa establece el problema, delimita los dos momentos de predicción y
+explica por qué deben analizarse como tareas independientes. Su función es fijar
+el alcance y las reglas temporales que guiarán todas las decisiones posteriores.
+
+## Introducción
+
+Los servicios de urgencias atienden pacientes con necesidades clínicas y administrativas muy diferentes. Después de la clasificación inicial o *triage*, cada atención avanza por varias decisiones: valoración, definición de una conducta, hospitalización o salida a casa y, finalmente, egreso administrativo. Cuando alguna de estas transiciones tarda más de lo esperado, aumenta la permanencia del paciente y se dificulta el flujo del servicio.
+
+Este proyecto utiliza datos de un hospital correspondientes a atenciones realizadas en su servicio de urgencias. La fuente inicial contiene **42.537 registros y 40 variables**. Cada fila representa una atención y las columnas describen información clínica básica, ubicación, tiempos, decisiones operativas y estados registrados durante el proceso.
+
+El propósito general es emplear ciencia de datos para anticipar demoras relevantes. Sin embargo, una única medida de “estancia total” ocultaría en qué parte del proceso ocurre el retraso. Por esta razón, el estudio se divide desde el comienzo en dos problemas predictivos diferentes.
+
+::: {.callout-note title="Propósito del estudio"}
+Se desarrollarán dos modelos de clasificación: uno para anticipar una estancia prolongada antes de definir la conducta y otro para anticipar una estancia prolongada después de que la conducta ya fue registrada.
+:::
+
+## El recorrido de una atención en urgencias
+
+Para comprender los objetivos es necesario seguir el orden de los eventos hospitalarios utilizados en el estudio.
+
+1. El paciente pasa por el proceso de triage y recibe una clasificación.
+2. Inmediatamente después se registra `fecha_ingreso` y comienza el primer periodo de observación.
+3. El equipo médico define una conducta: hospitalización o salida a casa. Ese instante queda registrado en `fecha_conducta`.
+4. Desde la definición de la conducta comienza un segundo periodo, que termina cuando se registra el egreso administrativo en `fecha_salida`.
+
+La siguiente línea temporal resume el proceso:
+
+```text
+TRIAGE DEFINIDO
+      │
+      ▼
+fecha_ingreso ─────────────── fecha_conducta ─────────────── fecha_salida
+      │                              │                              │
+ inicia Tiempo A               inicia Tiempo B              egreso administrativo
+      └──────── Tiempo A ────────────┘
+                                     └──────── Tiempo B ────────────┘
+```
+
+`fecha_conducta` funciona como la frontera entre los dos procesos: termina el Tiempo A y, simultáneamente, inicia el Tiempo B.
+
+## Tiempo A: estancia en el proceso de ingreso
+
+El **Tiempo A** representa las horas transcurridas desde que el paciente ya tiene un triage definido y entra formalmente al proceso, hasta que el equipo médico establece la conducta.
+
+```text
+Tiempo A = fecha_conducta - fecha_ingreso
+```
+
+El primer modelo intentará responder la siguiente pregunta:
+
+> Con la información disponible después del triage, ¿es posible anticipar si la definición de la conducta tardará seis horas o más?
+
+La variable objetivo será:
+
+```text
+estancia_ingreso_mayor_igual_6h = Tiempo A >= 6 horas
+```
+
+La predicción debe realizarse **antes de conocer la conducta**. Por tanto, ninguna información generada durante o después de esa decisión podrá utilizarse como predictor.
+
+## Tiempo B: estancia en el proceso de salida
+
+El **Tiempo B** representa las horas transcurridas desde que la conducta queda registrada hasta que se completa el egreso administrativo.
+
+```text
+Tiempo B = fecha_salida - fecha_conducta
+```
+
+El segundo modelo intentará responder:
+
+> Una vez registrada la conducta, ¿es posible anticipar si el egreso administrativo tardará seis horas o más?
+
+La segunda variable objetivo será:
+
+```text
+estancia_salida_mayor_igual_6h = Tiempo B >= 6 horas
+```
+
+Esta predicción se realiza inmediatamente después de registrar `conducta` y `fecha_conducta`. En ese instante ya se conoce lo ocurrido durante el Tiempo A, pero todavía no se conoce cuánto tardará el egreso.
+
+::: {.callout-important title="Dos modelos, no un solo modelo repetido"}
+Los modelos A y B tienen objetivos, momentos de predicción y variables disponibles diferentes. Una columna puede ser fuga de información para el modelo A y, al mismo tiempo, ser un predictor legítimo para el modelo B.
+:::
+
+## ¿Por qué es útil separar los dos tiempos?
+
+La separación permite distinguir dos tipos de demora que podrían requerir intervenciones diferentes:
+
+- Una demora en el **Tiempo A** puede estar relacionada con valoración, definición clínica, disponibilidad de especialidades o decisiones previas a la conducta.
+- Una demora en el **Tiempo B** ocurre cuando la decisión ya fue tomada y puede relacionarse con la ejecución del egreso, hospitalización u otros procesos posteriores.
+
+Un modelo único de tiempo total mezclaría ambos mecanismos. En cambio, dos modelos permiten producir resultados más interpretables y potencialmente más útiles para la gestión del servicio.
+
+## La fuente de datos
+
+El archivo original contiene 40 variables. No todas serán predictores. Algunas son identificadores o datos sensibles, otras carecen de variación, algunas contienen demasiados nulos y varias fueron creadas durante o después del desenlace que se desea anticipar.
+
+Además, la fuente conserva el **último valor registrado** de los campos que pueden actualizarse. Esto exige especial cuidado: una variable pudo existir al inicio, pero el valor observado en el archivo podría incorporar información añadida posteriormente.
+
+La etapa 01 examinará las 40 variables sin modificarlas. La etapa 02 retirará únicamente columnas universalmente improcedentes para ambos modelos. Finalmente, la etapa 04 construirá dos matrices predictoras distintas según el momento de disponibilidad.
+
+## Definiciones operativas confirmadas
+
+Después de presentar el proceso general, la tabla siguiente relaciona los nombres técnicos del dataset con su interpretación hospitalaria.
+
+| Campo | Significado dentro del estudio |
+|---|---|
+| `triage` | Clasificación definida antes de comenzar el Tiempo A. |
+| `fecha_ingreso` | Instante posterior al triage que inicia el Tiempo A. |
+| `fecha_conducta` | Instante en que se define hospitalización o salida a casa; termina A e inicia B. |
+| `conducta` | Decisión registrada simultáneamente con `fecha_conducta`. |
+| `fecha_salida` | Fecha, hora y minutos del egreso administrativo; termina el Tiempo B. |
+| `tiempo_en_ingreso` | Duración registrada entre `fecha_ingreso` y `fecha_conducta`. |
+| `total_en_salida` | Duración registrada entre `fecha_conducta` y `fecha_salida`. |
+
+Estas definiciones fueron contrastadas con conocimiento clínico del flujo. Las duraciones registradas se utilizarán como controles de consistencia, mientras los objetivos se construirán a partir de las marcas temporales validadas.
+
+## Disponibilidad temporal y fuga de información
+
+La fuga de información ocurre cuando un modelo recibe datos que todavía no existirían en el momento real de hacer la predicción. En ese caso, las métricas pueden parecer excelentes, pero el modelo estaría leyendo indirectamente la respuesta.
+
+::: {.callout-warning title="Criterio de exclusión"}
+Una variable se excluirá de un modelo si contiene el resultado, deriva matemáticamente de él, describe un evento posterior o conserva una actualización que no estaba disponible en el instante de predicción.
+:::
+
+La evaluación se hará por separado para A y B. Por ejemplo, `tiempo_en_ingreso` no puede predecir el Tiempo A porque constituye su medición; no obstante, ya es historia conocida cuando comienza el Tiempo B y podría aportar información al segundo modelo.
+
+## Decisiones clínicas conocidas al inicio del proyecto
+
+Las consultas sobre el proceso hospitalario permiten establecer algunas decisiones preliminares:
+
+- `diagnostico` contiene la versión definitiva y puede actualizarse con información posterior; por ello no será predictor de ninguno de los dos modelos.
+- `especialidades_tratantes` normalmente corresponde a la primera valoración, aunque el archivo conserva el último valor registrado.
+- `sala_observacion` y `cama` están disponibles cuando se registra la conducta y no se actualizan posteriormente; por ello pueden utilizarse en el Modelo B.
+- `conducta` y `fecha_conducta` se registran simultáneamente y solo deberían cambiar para corregir errores de digitación.
+- `fecha_salida` representa egreso administrativo y no necesariamente salida física del hospital.
+
+Estas decisiones serán refinadas con la exploración y quedarán justificadas variable por variable en la etapa 04.
+
+El umbral de seis horas corresponde a un **objetivo institucional definido antes del análisis**. Una duración exactamente igual a seis horas se clasifica como estancia prolongada; el criterio operativo es `duración >= 6 horas`.
+
+La unidad de análisis es cada episodio individual de atención en el servicio de urgencias. Cada fila representa un episodio y las predicciones se emitirán por episodio.
+
+## Organización del trabajo
+
+El análisis se desarrolla en etapas secuenciales. Cada una responde una pregunta concreta y produce la entrada requerida por la siguiente.
+
+| Etapa | Pregunta que responde |
+|---:|---|
+| 01 — Ingesta y validación | ¿Qué contiene realmente la fuente original y qué problemas presenta? |
+| 02 — Limpieza y calidad | ¿Qué información debe retirarse antes de cualquier análisis? |
+| 03 — Análisis exploratorio | ¿Cómo se comportan la población, los faltantes y los dos tiempos? |
+| 04 — Ingeniería de variables | ¿Cómo se construyen los objetivos y qué predictores son válidos para A y B? |
+| 05 — Preprocesamiento | ¿Cómo se separan y transforman los datos sin fuga? |
+| 06–07 — Modelado | ¿Qué modelos superan referencias simples y generalizan mejor? |
+| 08 — Evaluación | ¿Cómo funcionan los modelos sobre casos nunca utilizados? |
+| 09 — Interpretabilidad | ¿Qué variables se asocian con las predicciones? |
+| 10 — Conclusiones | ¿Qué se aprendió y cuáles son los límites del estudio? |
+
+## Conclusión de la etapa
+
+El proyecto parte de un dataset hospitalario de urgencias con 42.537 registros y 40 variables, pero no pretende utilizar todas las columnas ni predecir una única duración general. El diseño separa el proceso en Tiempo A y Tiempo B para producir dos modelos más interpretables y alineados con decisiones operativas diferentes.
+
+Con este contexto establecido, la etapa 01 puede examinar la fuente original sin modificarla y documentar la calidad real de los datos antes de aplicar cualquier transformación.
