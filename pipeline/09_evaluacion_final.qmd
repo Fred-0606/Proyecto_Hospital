@@ -1,115 +1,531 @@
-﻿---
+---
 title: "Etapa 09 — Evaluación final"
-subtitle: "Prueba independiente para ingreso y salida"
-format: html
+subtitle: "Prueba temporal independiente para los modelos A y B"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
 execute:
-  enabled: false
+  echo: true
+  output: true
+  error: false
+  warning: false
 ---
 
 ## Propósito de la etapa
 
-Evaluar una sola vez los modelos seleccionados sobre las particiones de prueba correspondientes.
+Medir una sola vez el desempeño de los modelos seleccionados sobre pacientes
+temporalmente posteriores que no participaron en el desarrollo. Esta es la
+primera etapa que puede leer las particiones de prueba.
 
-Hasta esta etapa todas las decisiones se han tomado con entrenamiento y validación. La prueba representa el primer contacto con casos completamente reservados y proporciona la estimación más honesta de desempeño futuro disponible en el proyecto.
+La evaluación no busca mejorar nuevamente los modelos. Los predictores, el
+algoritmo, los hiperparámetros y los umbrales ya fueron elegidos en la etapa 08.
+Si las métricas de prueba son inferiores a las de validación, esa diferencia se
+reportará como resultado y no se corregirá mediante un nuevo ajuste.
 
-## Configuración congelada
+## Qué está congelado antes de abrir la prueba
 
-Antes de habilitar esta etapa se debe validar
-`config/modelos_congelados.yml`. Ese manifiesto fija los predictores, modelos,
-hiperparámetros, umbrales, semilla, corte temporal, commit metodológico y
-huellas SHA-256 de los artefactos y de las cuatro particiones. Si cualquiera
-cambia, la evaluación debe detenerse y no abrir la prueba.
+El archivo `config/modelos_congelados.yml` conserva las decisiones tomadas sin
+conocer los resultados de prueba:
 
-```python
-from src.model_freeze import validate_frozen_configuration
+- predictores de los modelos A y B;
+- regresión logística y todos sus parámetros;
+- umbral de clasificación de cada modelo;
+- semilla `random_state=42`;
+- fecha del corte temporal;
+- huellas SHA-256 de las particiones y artefactos relevantes;
+- commit metodológico anterior a la evaluación.
 
-configuracion_congelada = validate_frozen_configuration()
-```
+El siguiente bloque verifica ese contrato. Si un archivo o una decisión cambió,
+la ejecución se detiene antes de cargar la prueba.
 
-El manifiesto registra `prueba_final_abierta: false` y permanecerá inmutable.
-La apertura no se indicará alterando ese archivo: quedará documentada en
-`outputs/metrics/09_apertura_prueba.json`.
+```{python}
+#| label: validar-congelamiento-etapa-09
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from IPython.display import Markdown, display
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import (
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    average_precision_score,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
+from sklearn.pipeline import Pipeline
 
-## Protocolo único de apertura
-
-La apertura requiere una confirmación explícita, un repositorio Git limpio,
-huellas válidas y ausencia de un registro anterior. El archivo se crea en modo
-exclusivo, por lo que una segunda ejecución se detendrá antes de cargar la
-prueba.
-
-```python
+from src.data_io import require_file, save_dataframe_as_csv, save_json
 from src.model_freeze import (
-    build_frozen_pipeline,
+    TEST_OPENING_RECORD_PATH,
     create_test_opening_record,
+    validate_frozen_configuration,
+)
+from src.paths import FIGURES_DIR, METRICS_DIR, TABLES_DIR
+from src.preprocessing import (
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_A_PREDICTORS,
+    MODEL_A_TARGET,
+    MODEL_A_TEST_PATH,
+    MODEL_B_DEVELOPMENT_PATH,
+    MODEL_B_PREDICTORS,
+    MODEL_B_TARGET,
+    MODEL_B_TEST_PATH,
+    build_model_a_preprocessor,
+    build_model_b_preprocessor,
 )
 
-# Este bloque solo se habilitará al autorizar formalmente la evaluación final.
+MINIMUM_SUBGROUP_SIZE = 30
+
+FINAL_METRICS_PATH = METRICS_DIR / "09_evaluacion_final.json"
+FINAL_TABLE_PATH = TABLES_DIR / "09_metricas_prueba.csv"
+COMPARISON_TABLE_PATH = TABLES_DIR / "09_comparacion_validacion_prueba.csv"
+SUBGROUP_TABLE_PATH = TABLES_DIR / "09_desempeno_subgrupos.csv"
+CONFUSION_FIGURE_PATH = FIGURES_DIR / "09_matrices_confusion_prueba.png"
+
+configuracion = validate_frozen_configuration()
+
+pd.DataFrame(
+    [
+        {
+            "modelo": modelo,
+            "algoritmo": datos["candidato"],
+            "predictores": len(datos["predictores"]),
+            "umbral": datos["umbral"],
+            "C": datos["clasificador"]["C"],
+            "l1_ratio": datos["clasificador"]["l1_ratio"],
+            "class_weight": str(datos["clasificador"]["class_weight"]),
+            "random_state": datos["clasificador"]["random_state"],
+        }
+        for modelo, datos in configuracion["modelos"].items()
+    ]
+)
+```
+
+La tabla anterior es una lectura del manifiesto, no una nueva búsqueda. En
+particular, `C`, `l1_ratio`, `class_weight` y los umbrales no se modificarán a
+partir de lo observado en prueba.
+
+## Apertura única y trazable
+
+La autorización de esta etapa se registra antes de leer las particiones de
+prueba. El registro exige que Git esté limpio y se crea en modo exclusivo: una
+segunda apertura accidental no puede sobrescribirlo.
+
+```{python}
+#| label: registrar-apertura-etapa-09
 registro_apertura = create_test_opening_record(confirm_opening=True)
 
-pipeline_a = build_frozen_pipeline("A", configuracion_congelada)
-pipeline_b = build_frozen_pipeline("B", configuracion_congelada)
+display(
+    Markdown(
+        "**Apertura registrada correctamente.** "
+        f"Commit de ejecución: `{registro_apertura['commit_ejecucion'][:8]}`; "
+        f"fecha UTC: `{registro_apertura['fecha_hora_utc']}`."
+    )
+)
 ```
 
-El registro conserva la fecha y hora UTC, las huellas de las particiones, la
-huella del manifiesto y el commit exacto de ejecución. No contiene datos de
-pacientes ni resultados del objetivo.
+Este archivo solo documenta la apertura, el commit y las huellas. No contiene
+filas hospitalarias, identificadores ni predicciones individuales.
 
-## Reporte obligatorio por tarea
+## Lectura separada de desarrollo y prueba
 
-La tabla siguiente anticipa la estructura del reporte. Mantener columnas paralelas facilitará comparar los dos procesos sin confundir objetivos ni momentos de predicción.
+Primero se comprueba la existencia de los cuatro archivos. Después se cargan y
+se muestran únicamente sus dimensiones y periodos. Las primeras filas no se
+publican porque podrían revelar combinaciones de características de pacientes.
 
-| Dimensión | Modelo de ingreso | Modelo de salida |
-|---|---|---|
-| Objetivo | `estancia_prolongada_a` | `estancia_prolongada_b` |
-| Momento de predicción | Después del triage | Al registrar la conducta |
-| Prueba | Casos futuros reservados | Casos futuros reservados |
-| Métricas | Recall, precision, F1, ROC-AUC y PR-AUC | Recall, precision, F1, ROC-AUC y PR-AUC |
+```{python}
+#| label: leer-particiones-etapa-09
+for ruta, instruccion in (
+    (MODEL_A_DEVELOPMENT_PATH, "Ejecute primero la etapa 04 para el desarrollo A."),
+    (MODEL_A_TEST_PATH, "Ejecute primero la etapa 04 para la prueba A."),
+    (MODEL_B_DEVELOPMENT_PATH, "Ejecute primero la etapa 04 para el desarrollo B."),
+    (MODEL_B_TEST_PATH, "Ejecute primero la etapa 04 para la prueba B."),
+):
+    require_file(ruta, instruccion)
 
-## Controles
+desarrollo_a = pd.read_parquet(MODEL_A_DEVELOPMENT_PATH)
+prueba_a = pd.read_parquet(MODEL_A_TEST_PATH)
+desarrollo_b = pd.read_parquet(MODEL_B_DEVELOPMENT_PATH)
+prueba_b = pd.read_parquet(MODEL_B_TEST_PATH)
 
-La evaluación final seguirá controles estrictos para que la prueba no se convierta en otra partición de ajuste:
+resumen_particiones = pd.DataFrame(
+    [
+        {
+            "modelo": nombre,
+            "particion": particion,
+            "registros": len(datos),
+            "fecha_inicial": datos["fecha_referencia"].min(),
+            "fecha_final": datos["fecha_referencia"].max(),
+        }
+        for nombre, particion, datos in (
+            ("A", "desarrollo", desarrollo_a),
+            ("A", "prueba", prueba_a),
+            ("B", "desarrollo", desarrollo_b),
+            ("B", "prueba", prueba_b),
+        )
+    ]
+)
+resumen_particiones
+```
 
-- La prueba no participa en selección ni transformación.
-- Se reportan intervalos de incertidumbre cuando sea viable.
-- Se revisan errores por triage, edad, afiliación y turno sin revelar personas.
-- Ninguna mejora se interpreta como causalidad.
+## Construcción visible de los modelos finales
 
-## Secuencia transparente de evaluación
+Los dos modelos seleccionados son regresiones logísticas. El código siguiente
+muestra de forma explícita sus parámetros y la unión entre preprocesamiento y
+clasificador.
 
-La prueba se abrirá una sola vez después de fijar el algoritmo, sus
-hiperparámetros y el umbral. El documento mostrará separadamente el ajuste final,
-la generación de probabilidades y el cálculo de cada métrica:
+Los constructores `build_model_a_preprocessor()` y
+`build_model_b_preprocessor()` reutilizan exactamente las transformaciones
+mostradas y verificadas en la etapa 06: imputación aprendida solo con desarrollo,
+escalamiento de variables numéricas y codificación de categorías desconocidas.
+No se redefinen aquí para evitar dos versiones distintas del mismo proceso.
 
-```python
-# El desarrollo completo es la única entrada de fit().
-selected_pipeline.fit(
-    development[predictors],
-    development[target],
+```{python}
+#| label: construir-modelos-finales-etapa-09
+parametros_a = configuracion["modelos"]["A"]["clasificador"]
+parametros_b = configuracion["modelos"]["B"]["clasificador"]
+
+clasificador_a = LogisticRegression(
+    solver=parametros_a["solver"],
+    C=parametros_a["C"],
+    l1_ratio=parametros_a["l1_ratio"],
+    class_weight=parametros_a["class_weight"],
+    tol=parametros_a["tol"],
+    max_iter=parametros_a["max_iter"],
+    random_state=parametros_a["random_state"],
 )
 
-# La prueba solo se transforma y predice.
-test_probability = selected_pipeline.predict_proba(
-    test[predictors]
-)[:, 1]
-test_prediction = (test_probability >= selected_threshold).astype("int8")
+clasificador_b = LogisticRegression(
+    solver=parametros_b["solver"],
+    C=parametros_b["C"],
+    l1_ratio=parametros_b["l1_ratio"],
+    class_weight=parametros_b["class_weight"],
+    tol=parametros_b["tol"],
+    max_iter=parametros_b["max_iter"],
+    random_state=parametros_b["random_state"],
+)
 
-test_metrics = {
-    "recall": recall_score(test[target], test_prediction),
-    "precision": precision_score(test[target], test_prediction),
-    "f1": f1_score(test[target], test_prediction),
-    "roc_auc": roc_auc_score(test[target], test_probability),
-    "pr_auc": average_precision_score(test[target], test_probability),
-    "matriz_confusion": confusion_matrix(test[target], test_prediction),
-}
+modelo_a = Pipeline(
+    steps=[
+        ("preprocesamiento", build_model_a_preprocessor()),
+        ("clasificador", clasificador_a),
+    ]
+)
+
+modelo_b = Pipeline(
+    steps=[
+        ("preprocesamiento", build_model_b_preprocessor()),
+        ("clasificador", clasificador_b),
+    ]
+)
 ```
 
-Cuando se implemente, las variables del bloque serán objetos reales creados en
-las etapas anteriores. El código no se ejecuta todavía y, por tanto, no anticipa
-resultados de prueba.
+## Ajuste final usando únicamente desarrollo
 
-## Resultado esperado
+Cada pipeline aprende todas sus transformaciones y coeficientes con el conjunto
+de desarrollo completo. La prueba no aparece en ninguna llamada a `fit()`.
 
-Dos evaluaciones finales claramente separadas y una valoración de utilidad operativa para cada punto de decisión.
+```{python}
+#| label: ajustar-modelos-finales-etapa-09
+modelo_a.fit(
+    desarrollo_a[MODEL_A_PREDICTORS],
+    desarrollo_a[MODEL_A_TARGET],
+)
 
-Además de las métricas globales, se explicará qué tipos de errores son más frecuentes y qué consecuencias tendría cada uno en el flujo de urgencias.
+modelo_b.fit(
+    desarrollo_b[MODEL_B_PREDICTORS],
+    desarrollo_b[MODEL_B_TARGET],
+)
 
+convergencia = pd.DataFrame(
+    [
+        {
+            "modelo": "A",
+            "iteraciones": int(modelo_a["clasificador"].n_iter_[0]),
+            "max_iter": modelo_a["clasificador"].max_iter,
+        },
+        {
+            "modelo": "B",
+            "iteraciones": int(modelo_b["clasificador"].n_iter_[0]),
+            "max_iter": modelo_b["clasificador"].max_iter,
+        },
+    ]
+)
+convergencia["convergencia_alcanzada"] = (
+    convergencia["iteraciones"] < convergencia["max_iter"]
+)
+convergencia
+```
+
+## Probabilidades y decisiones en prueba
+
+El modelo produce primero una probabilidad. Después se aplica el umbral que ya
+había sido congelado en la etapa 08. No se busca un nuevo punto de corte.
+
+```{python}
+#| label: predecir-prueba-etapa-09
+probabilidad_a = modelo_a.predict_proba(prueba_a[MODEL_A_PREDICTORS])[:, 1]
+probabilidad_b = modelo_b.predict_proba(prueba_b[MODEL_B_PREDICTORS])[:, 1]
+
+umbral_a = configuracion["modelos"]["A"]["umbral"]
+umbral_b = configuracion["modelos"]["B"]["umbral"]
+
+prediccion_a = (probabilidad_a >= umbral_a).astype("int8")
+prediccion_b = (probabilidad_b >= umbral_b).astype("int8")
+```
+
+## Cálculo transparente de las métricas
+
+Las métricas responden preguntas diferentes:
+
+- **recall:** de todas las estancias realmente prolongadas, cuántas se detectan;
+- **precision:** de todas las alertas, cuántas corresponden a estancias prolongadas;
+- **F1:** equilibrio entre recall y precision;
+- **ROC-AUC:** capacidad general de ordenar positivos por encima de negativos;
+- **PR-AUC:** calidad del ordenamiento concentrada en la clase positiva;
+- **accuracy:** proporción total de clasificaciones correctas, reportada solo como
+  complemento porque puede ser optimista cuando existe desbalance.
+
+```{python}
+#| label: calcular-metricas-prueba-etapa-09
+def calcular_metricas_finales(
+    objetivo: pd.Series,
+    probabilidades: np.ndarray,
+    predicciones: np.ndarray,
+) -> dict[str, float | int]:
+    """Calcula métricas finales y los cuatro conteos de la matriz de confusión."""
+    verdaderos_negativos, falsos_positivos, falsos_negativos, verdaderos_positivos = (
+        confusion_matrix(objetivo, predicciones, labels=[0, 1]).ravel()
+    )
+    return {
+        "registros": int(len(objetivo)),
+        "prevalencia": float(objetivo.mean()),
+        "accuracy": float(accuracy_score(objetivo, predicciones)),
+        "recall": float(recall_score(objetivo, predicciones, zero_division=0)),
+        "precision": float(precision_score(objetivo, predicciones, zero_division=0)),
+        "f1": float(f1_score(objetivo, predicciones, zero_division=0)),
+        "roc_auc": float(roc_auc_score(objetivo, probabilidades)),
+        "pr_auc": float(average_precision_score(objetivo, probabilidades)),
+        "verdaderos_negativos": int(verdaderos_negativos),
+        "falsos_positivos": int(falsos_positivos),
+        "falsos_negativos": int(falsos_negativos),
+        "verdaderos_positivos": int(verdaderos_positivos),
+    }
+
+
+metricas_a = calcular_metricas_finales(
+    prueba_a[MODEL_A_TARGET], probabilidad_a, prediccion_a
+)
+metricas_b = calcular_metricas_finales(
+    prueba_b[MODEL_B_TARGET], probabilidad_b, prediccion_b
+)
+
+tabla_metricas = pd.DataFrame(
+    [
+        {"modelo": "A", "umbral": umbral_a, **metricas_a},
+        {"modelo": "B", "umbral": umbral_b, **metricas_b},
+    ]
+)
+tabla_metricas
+```
+
+La prevalencia se muestra por primera vez porque la prueba ya fue abierta
+formalmente. No se utilizará para alterar pesos, parámetros ni umbrales.
+
+## Matrices de confusión
+
+Las matrices traducen las métricas a cantidades de casos. Un falso negativo es
+una estancia prolongada no anticipada; un falso positivo es una alerta que no
+terminó en estancia prolongada.
+
+```{python}
+#| label: matrices-confusion-prueba-etapa-09
+figura, ejes = plt.subplots(1, 2, figsize=(10, 4))
+
+for eje, nombre, objetivo, prediccion in (
+    (ejes[0], "Modelo A — ingreso", prueba_a[MODEL_A_TARGET], prediccion_a),
+    (ejes[1], "Modelo B — salida", prueba_b[MODEL_B_TARGET], prediccion_b),
+):
+    ConfusionMatrixDisplay.from_predictions(
+        objetivo,
+        prediccion,
+        labels=[0, 1],
+        display_labels=["No prolongada", "Prolongada"],
+        cmap="Blues",
+        colorbar=False,
+        ax=eje,
+    )
+    eje.set_title(nombre)
+
+figura.tight_layout()
+CONFUSION_FIGURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+figura.savefig(CONFUSION_FIGURE_PATH, dpi=160, bbox_inches="tight")
+plt.show()
+```
+
+## Comparación honesta entre validación y prueba
+
+ROC-AUC y PR-AUC son directamente comparables con las medias de validación
+congeladas. Una reducción en prueba puede reflejar variación temporal,
+incertidumbre o sobreajuste; no autoriza a volver a seleccionar el modelo.
+
+```{python}
+#| label: comparar-validacion-prueba-etapa-09
+comparacion = pd.DataFrame(
+    [
+        {
+            "modelo": modelo,
+            "metrica": metrica,
+            "validacion": configuracion["modelos"][modelo][f"{metrica}_validacion"],
+            "prueba": metricas[metrica],
+        }
+        for modelo, metricas in (("A", metricas_a), ("B", metricas_b))
+        for metrica in ("roc_auc", "pr_auc")
+    ]
+)
+comparacion["diferencia_prueba_menos_validacion"] = (
+    comparacion["prueba"] - comparacion["validacion"]
+)
+comparacion
+```
+
+## Revisión descriptiva por subgrupos
+
+Las métricas globales pueden ocultar comportamientos diferentes entre grupos.
+Se revisan triage, edad, afiliación y turno como análisis descriptivo, sin
+seleccionar nuevas variables ni modificar el modelo. Para reducir resultados
+inestables y proteger la confidencialidad, solo se reportan grupos con al menos
+30 registros.
+
+```{python}
+#| label: subgrupos-prueba-etapa-09
+def preparar_grupos(datos: pd.DataFrame) -> pd.DataFrame:
+    """Crea grupos amplios para revisar el desempeño sin mostrar pacientes."""
+    grupos = datos.copy()
+    grupos["grupo_edad"] = pd.cut(
+        grupos["edad"],
+        bins=[-np.inf, 17, 39, 64, np.inf],
+        labels=["0–17", "18–39", "40–64", "65 o más"],
+    )
+    grupos["turno_ingreso"] = pd.cut(
+        grupos["hora_ingreso"],
+        bins=[-1, 5, 11, 17, 23],
+        labels=["Madrugada", "Mañana", "Tarde", "Noche"],
+    )
+    return grupos
+
+
+def resumir_subgrupos(
+    datos: pd.DataFrame,
+    objetivo: str,
+    probabilidades: np.ndarray,
+    predicciones: np.ndarray,
+    modelo: str,
+) -> pd.DataFrame:
+    """Resume recall, precision y F1 en grupos suficientemente grandes."""
+    evaluacion = preparar_grupos(datos)
+    evaluacion["probabilidad_modelo"] = probabilidades
+    evaluacion["prediccion_modelo"] = predicciones
+    resultados = []
+
+    for variable in ("triage", "grupo_edad", "afiliacion", "turno_ingreso"):
+        for valor, grupo in evaluacion.groupby(variable, observed=True, dropna=False):
+            if len(grupo) < MINIMUM_SUBGROUP_SIZE:
+                continue
+            resultados.append(
+                {
+                    "modelo": modelo,
+                    "variable": variable,
+                    "grupo": str(valor),
+                    "registros": len(grupo),
+                    "prevalencia": float(grupo[objetivo].mean()),
+                    "recall": float(
+                        recall_score(
+                            grupo[objetivo],
+                            grupo["prediccion_modelo"],
+                            zero_division=0,
+                        )
+                    ),
+                    "precision": float(
+                        precision_score(
+                            grupo[objetivo],
+                            grupo["prediccion_modelo"],
+                            zero_division=0,
+                        )
+                    ),
+                    "f1": float(
+                        f1_score(
+                            grupo[objetivo],
+                            grupo["prediccion_modelo"],
+                            zero_division=0,
+                        )
+                    ),
+                }
+            )
+    return pd.DataFrame(resultados)
+
+
+tabla_subgrupos = pd.concat(
+    [
+        resumir_subgrupos(
+            prueba_a, MODEL_A_TARGET, probabilidad_a, prediccion_a, "A"
+        ),
+        resumir_subgrupos(
+            prueba_b, MODEL_B_TARGET, probabilidad_b, prediccion_b, "B"
+        ),
+    ],
+    ignore_index=True,
+)
+tabla_subgrupos
+```
+
+Estas diferencias no deben interpretarse como efectos causales ni como prueba
+de inequidad por sí solas. Sirven para señalar patrones que requerirían revisión
+clínica y muestras suficientes antes de cualquier uso operativo.
+
+## Artefactos y cierre de la etapa
+
+Se guardan únicamente resultados agregados. No se exportan probabilidades ni
+predicciones por paciente.
+
+```{python}
+#| label: guardar-resultados-etapa-09
+save_dataframe_as_csv(tabla_metricas, FINAL_TABLE_PATH)
+save_dataframe_as_csv(comparacion, COMPARISON_TABLE_PATH)
+save_dataframe_as_csv(tabla_subgrupos, SUBGROUP_TABLE_PATH)
+
+resultado_final = {
+    "apertura": {
+        "registro": TEST_OPENING_RECORD_PATH.name,
+        "commit_ejecucion": registro_apertura["commit_ejecucion"],
+        "fecha_hora_utc": registro_apertura["fecha_hora_utc"],
+    },
+    "regla": "evaluacion_unica_sin_reajuste_posterior",
+    "modelo_a": {"umbral": umbral_a, **metricas_a},
+    "modelo_b": {"umbral": umbral_b, **metricas_b},
+    "artefactos": [
+        FINAL_TABLE_PATH.name,
+        COMPARISON_TABLE_PATH.name,
+        SUBGROUP_TABLE_PATH.name,
+        CONFUSION_FIGURE_PATH.name,
+    ],
+}
+save_json(resultado_final, FINAL_METRICS_PATH)
+
+display(
+    Markdown(
+        "La prueba final fue evaluada una sola vez. Los resultados quedan "
+        "cerrados para reporte e interpretación; no se realizará un nuevo "
+        "ajuste orientado por estas métricas."
+    )
+)
+```
+
+La etapa entrega dos evaluaciones independientes y trazables. La etapa 10 podrá
+explicar los modelos ya ajustados, pero no cambiará sus parámetros ni sus
+resultados finales.
