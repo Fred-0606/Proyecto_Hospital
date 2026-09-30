@@ -1,6 +1,7 @@
 estado: congelado_previo_a_prueba
 fecha_congelamiento: "2026-09-29"
 prueba_final_abierta: false
+commit_metodologico: 985ce01b4122f6c806e8d8591e3a8c88e9a177bd
 random_state: 42
 fecha_inicio_prueba: "2026-03-01"
 metrica_seleccion: pr_auc
@@ -8,6 +9,9 @@ regla_seleccion: modelo_mas_simple_dentro_de_un_error_estandar
 pliegues_temporales: 5
 
 definiciones_operativas:
+  exclusion_especialidades_tratantes:
+    decision: excluida_de_ambos_modelos
+    fundamento: el servicio medico confirmo que puede modificarse o ampliarse durante la atencion y la fuente conserva el ultimo valor
   carga_activa_b:
     instante: inmediatamente_antes_de_registrar_la_conducta
     excluye_paciente_actual: true
@@ -62,7 +66,6 @@ modelos:
       - dia_semana_conducta
       - mes_conducta
       - fin_semana_conducta
-      - especialidades_tratantes
     candidato: regresion_logistica
     clasificador:
       solver: saga
@@ -72,13 +75,19 @@ modelos:
       tol: 0.001
       max_iter: 1000
       random_state: 42
-    umbral: 0.2776236062837081
-    pr_auc_validacion: 0.6291958734999129
-    roc_auc_validacion: 0.7935954487704086
+    umbral: 0.26381738273532324
+    pr_auc_validacion: 0.6173497755829958
+    roc_auc_validacion: 0.7877339421581986
+
+huellas_particiones:
+  modelo_a_desarrollo: df210b09b99fb9acb0ce99f8594460e8661fe77680bc3b87937411ea175c2299
+  modelo_a_prueba: 6297ec63e208c03451672a4c59d483109f08de96c2ed5c68ef3fe6fd3fcccad5
+  modelo_b_desarrollo: d54d988d2451d850076f020fd2ce0254cea223cb95378d8fd7a3d331c7acd0b9
+  modelo_b_prueba: 5f37f17acccb0f79e9d5eed12786f47c037ead72ac317d29a7550d6648e3a9ac
 
 huellas_sha256:
   requirements-lock.txt: 206c92171bbf0fc99a1499aaf634ffb638bc580d3a86a506412d3310c920682c
-  outputs/metrics/06_feature_engineering_preprocesamiento.json: 5f1cfccfb0b48602b7a51233fff828a0c2d9165707e1449185b36fc54f2adb0c
+  outputs/metrics/06_feature_engineering_preprocesamiento.json: 565a11eb9b9bbd66d789860c1ca6fa02e1bc3162be741b62181cd801a5f70859
   outputs/metrics/07_modelos_baseline.json: 7e35dade834062933593d3e10c1c6db93dd5997f6200a7fb426b56357a27e24b
-  outputs/metrics/08_seleccion_modelos.json: f5afc3132ff426bb1c73a65013dd4dfb7cdbbed40c35e7b4adaa29aebb913f3e
-  outputs/tables/08_umbrales_seleccionados.csv: d10884530595e15166ca9c0f6f2e9c79bca3dd43b122ea08490e275ab0da887b
+  outputs/metrics/08_seleccion_modelos.json: b658ef92726e722c241d7fa66904d4cb0f5d7973cb2dde2c15c174922a570f84
+  outputs/tables/08_umbrales_seleccionados.csv: 1af776215d96dcb2e618f6a25a400d9691dc6ef774274f263eaf7da97f7a1d27

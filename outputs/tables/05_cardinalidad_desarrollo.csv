@@ -5,7 +5,6 @@ A,dia_semana_ingreso,7
 A,mes_ingreso,12
 B,triage,6
 B,afiliacion,7
-B,especialidades_tratantes,388
 B,sala_observacion,15
 B,grupo_cama,24
 B,conducta,3

@@ -6,7 +6,7 @@ edad,incluir,incluir,predictora,Disponible antes de ambos instantes de predicci�
 afiliacion,incluir,incluir,predictora,Disponible antes de ambos instantes de predicción.
 eapb,excluir,excluir,descartada,Más del 60 % de sus valores están ausentes.
 diagnostico,excluir,excluir,descartada,Diagnóstico definitivo y actualizado; contiene información tardía.
-especialidades_tratantes,excluir,incluir,predictora,No garantizada al predecir A; disponible con cautela para B.
+especialidades_tratantes,excluir,excluir,control_objetivo,Variable mutable durante la atención; el último valor puede contener información posterior y se excluye de ambos modelos.
 sala_observacion,excluir,incluir,predictora,No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.
 cama,excluir,incluir,predictora,No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.
 status,excluir,excluir,descartada,Varianza cero detectada con VarianceThreshold.

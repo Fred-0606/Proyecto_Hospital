@@ -32,7 +32,6 @@ from src.features import (
     build_duration_summary,
     build_rate_by_category,
     build_rate_by_reference_hour,
-    build_specialty_frequency,
     build_target_balance,
 )
 from src.paths import METRICS_DIR, TABLES_DIR
@@ -87,10 +86,8 @@ display(cardinalidad)
 #| label: patrones-etapa-05
 tasas_triage = build_rate_by_category(desarrollo_a, desarrollo_b, "triage")
 tasas_hora = build_rate_by_reference_hour(desarrollo_a, desarrollo_b)
-especialidades = build_specialty_frequency(desarrollo_b)
 display(tasas_triage)
 display(tasas_hora)
-display(especialidades)
 ```
 
 Estas asociaciones son descriptivas. No prueban causalidad ni sustituyen la
@@ -107,7 +104,6 @@ rutas_tablas = {
     "cardinalidad": TABLES_DIR / "05_cardinalidad_desarrollo.csv",
     "triage": TABLES_DIR / "05_tasa_por_triage_desarrollo.csv",
     "hora": TABLES_DIR / "05_tasa_por_hora_desarrollo.csv",
-    "especialidades": TABLES_DIR / "05_especialidades_desarrollo.csv",
 }
 for tabla, ruta in (
     (balance, rutas_tablas["balance"]),
@@ -116,7 +112,6 @@ for tabla, ruta in (
     (cardinalidad, rutas_tablas["cardinalidad"]),
     (tasas_triage, rutas_tablas["triage"]),
     (tasas_hora, rutas_tablas["hora"]),
-    (especialidades, rutas_tablas["especialidades"]),
 ):
     save_dataframe_as_csv(tabla, ruta)
 

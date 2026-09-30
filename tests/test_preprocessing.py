@@ -112,8 +112,8 @@ def test_model_a_preprocessor_learns_median_only_from_fit_data() -> None:
     assert transformed.shape[0] == 1
 
 
-def test_model_b_preprocessor_handles_new_categories_and_specialties() -> None:
-    """Categorías futuras deben transformarse sin ampliar el vocabulario aprendido."""
+def test_model_b_preprocessor_handles_new_categories() -> None:
+    """Las categorías futuras deben transformarse sin modificar el ajuste."""
     train = pd.DataFrame(
         {
             "edad": [20.0, np.nan],
@@ -133,28 +133,18 @@ def test_model_b_preprocessor_handles_new_categories_and_specialties() -> None:
             "dia_semana_conducta": ["lunes", "martes"],
             "mes_conducta": ["enero", "enero"],
             "fin_semana_conducta": [0, 0],
-            "especialidades_tratantes": [
-                "medicina_interna | cirugia_general",
-                "pediatria",
-            ],
         }
     )
     future = train.iloc[[0]].copy()
     future.loc[:, "triage"] = "triage_nuevo"
-    future.loc[:, "especialidades_tratantes"] = "especialidad_nueva"
     preprocessor = build_model_b_preprocessor().fit(train)
 
     transformed = preprocessor.transform(future)
     duration_imputer = preprocessor.named_transformers_[
         "duracion_ingreso"
     ].named_steps["imputacion"]
-    vocabulary = preprocessor.named_transformers_["especialidades"].named_steps[
-        "codificacion"
-    ].vocabulary_
-
     assert transformed.shape[0] == 1
     assert duration_imputer.add_indicator is True
-    assert "especialidad_nueva" not in vocabulary
     assert np.isfinite(transformed.data).all()
 
 
@@ -188,3 +178,4 @@ def test_predictor_lists_exclude_dates_targets_and_outcome_durations() -> None:
     assert "fecha_referencia" not in MODEL_B_PREDICTORS
     assert MODEL_B_TARGET not in MODEL_B_PREDICTORS
     assert "duracion_salida_calculada" not in MODEL_B_PREDICTORS
+    assert "especialidades_tratantes" not in MODEL_B_PREDICTORS

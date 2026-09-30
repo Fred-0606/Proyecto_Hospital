@@ -101,4 +101,18 @@ conclusiones.
 
 La configuración previa a la evaluación final está congelada en
 `config/modelos_congelados.yml`. La etapa 09 debe validar ese manifiesto y sus
-huellas antes de abrir las particiones de prueba.
+huellas antes de abrir las particiones de prueba. El contrato incluye los
+cuatro archivos de desarrollo y prueba, el commit metodológico, todos los
+parámetros de los clasificadores y los artefactos de selección.
+
+El manifiesto no se modifica al abrir la prueba. La apertura controlada se
+registra una sola vez en `outputs/metrics/09_apertura_prueba.json`; exige
+confirmación explícita, repositorio Git limpio y coincidencia de todas las
+huellas. Mientras la etapa 09 permanezca deshabilitada, ese archivo no debe
+existir.
+
+`especialidades_tratantes` se conserva únicamente en la auditoría de calidad y
+no participa en los modelos. El servicio médico confirmó que puede modificarse
+o ampliarse durante la atención; como la fuente conserva el último valor, no es
+posible garantizar que estuviera disponible al registrar la conducta del
+Modelo B.

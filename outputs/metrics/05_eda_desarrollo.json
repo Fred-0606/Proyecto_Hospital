@@ -8,7 +8,6 @@
     "05_faltantes_desarrollo.csv",
     "05_cardinalidad_desarrollo.csv",
     "05_tasa_por_triage_desarrollo.csv",
-    "05_tasa_por_hora_desarrollo.csv",
-    "05_especialidades_desarrollo.csv"
+    "05_tasa_por_hora_desarrollo.csv"
   ]
 }

@@ -140,7 +140,7 @@ La evaluación se hará por separado para A y B. Por ejemplo, `tiempo_en_ingreso
 Las consultas sobre el proceso hospitalario permiten establecer algunas decisiones preliminares:
 
 - `diagnostico` contiene la versión definitiva y puede actualizarse con información posterior; por ello no será predictor de ninguno de los dos modelos.
-- `especialidades_tratantes` normalmente corresponde a la primera valoración, aunque el archivo conserva el último valor registrado.
+- `especialidades_tratantes` puede modificarse o ampliarse durante la atención según la necesidad y evolución del paciente. Como el archivo conserva el último valor registrado y no su historial, se excluye de ambos modelos para evitar información posterior al instante de predicción.
 - `sala_observacion` y `cama` están disponibles cuando se registra la conducta y no se actualizan posteriormente; por ello pueden utilizarse en el Modelo B.
 - `conducta` y `fecha_conducta` se registran simultáneamente y solo deberían cambiar para corregir errores de digitación.
 - `fecha_salida` representa egreso administrativo y no necesariamente salida física del hospital.

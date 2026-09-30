@@ -114,7 +114,11 @@ ninguna variable registrada después del instante correspondiente.
 | Edad, volúmenes recientes de A y carga activa de B | Mediana del entrenamiento y `StandardScaler` |
 | Duración de ingreso en B | Mediana, indicador de ausencia y escalamiento |
 | Categóricas | Categoría explícita y `OneHotEncoder(handle_unknown="ignore")` |
-| Especialidades de B | Indicadores binarios mediante `CountVectorizer` |
+
+`especialidades_tratantes` no se transforma ni entra al Modelo B. El servicio
+médico confirmó que puede modificarse o ampliarse durante la atención y la
+fuente disponible conserva el último valor, por lo que no puede garantizarse
+qué especialidades eran conocidas al registrar la conducta.
 
 Los objetos concretos pueden inspeccionarse directamente:
 

@@ -32,8 +32,7 @@
     "hora_conducta",
     "dia_semana_conducta",
     "mes_conducta",
-    "fin_semana_conducta",
-    "especialidades_tratantes"
+    "fin_semana_conducta"
   ],
   "pliegues_modelo_a": [
     {

@@ -25,7 +25,6 @@
     "triage",
     "edad",
     "afiliacion",
-    "especialidades_tratantes",
     "sala_observacion",
     "cama",
     "fecha_ingreso",
@@ -34,6 +33,7 @@
     "conducta"
   ],
   "controles_calidad": [
+    "especialidades_tratantes",
     "fecha_salida",
     "total_en_salida"
   ]

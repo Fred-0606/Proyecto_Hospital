@@ -124,6 +124,7 @@ def test_model_b_requires_only_valid_target() -> None:
     assert "fecha_salida" not in result.columns
     assert "fecha_conducta" not in result.columns
     assert "cama" not in result.columns
+    assert "especialidades_tratantes" not in result.columns
     assert result["grupo_cama"].tolist() == ["otras_camas"] * 3
     assert result["fin_semana_conducta"].tolist() == [1, 0, 0]
     assert result["pacientes_activos_en_ingreso"].tolist() == [0, 0, 0]

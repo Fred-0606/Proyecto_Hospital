@@ -242,7 +242,6 @@ def build_model_b_dataset(dataframe: pd.DataFrame) -> pd.DataFrame:
             "triage",
             "edad",
             "afiliacion",
-            "especialidades_tratantes",
             "sala_observacion",
             "cama",
             "conducta",
@@ -267,7 +266,6 @@ def build_model_b_dataset(dataframe: pd.DataFrame) -> pd.DataFrame:
             "triage",
             "edad",
             "afiliacion",
-            "especialidades_tratantes",
             "sala_observacion",
             "grupo_cama",
             "conducta",
@@ -391,7 +389,7 @@ def build_variable_dictionary() -> pd.DataFrame:
         ("triage", "predictora", "A y B", "Clasificación disponible al inicio del proceso."),
         ("edad", "predictora", "A y B", "Edad validada; su mediana se ajustará solo con entrenamiento."),
         ("afiliacion", "predictora", "A y B", "Afiliación registrada al inicio."),
-        ("especialidades_tratantes", "predictora", "B", "Especialidades conocidas al registrar la conducta."),
+        ("especialidades_tratantes", "descartada", "Ninguno", "El archivo conserva el último valor y puede incluir especialidades agregadas después de la conducta."),
         ("sala_observacion", "predictora", "B", "Ubicación conocida antes del proceso de salida."),
         ("grupo_cama", "predictora", "B", "Área y tipo de la primera cama disponible al momento B."),
         ("conducta", "predictora", "B", "Decisión registrada simultáneamente con el inicio del tiempo B."),
@@ -428,7 +426,6 @@ def build_categorical_cardinality(
             [
                 "triage",
                 "afiliacion",
-                "especialidades_tratantes",
                 "sala_observacion",
                 "grupo_cama",
                 "conducta",
@@ -491,23 +488,6 @@ def build_rate_by_reference_hour(
         grouped["tasa_prolongada"] *= 100
         frames.append(grouped)
     return pd.concat(frames, ignore_index=True)
-
-
-def build_specialty_frequency(model_b: pd.DataFrame, limit: int = 15) -> pd.DataFrame:
-    """Cuenta etiquetas individuales en la variable multiespecialidad del modelo B."""
-    specialties = (
-        model_b["especialidades_tratantes"]
-        .str.split(" | ", regex=False)
-        .explode()
-        .dropna()
-    )
-    return (
-        specialties.value_counts()
-        .head(limit)
-        .rename_axis("especialidad")
-        .rename("registros")
-        .reset_index()
-    )
 
 
 def build_duplicate_audit(

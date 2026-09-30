@@ -25,12 +25,12 @@
         "clasificador__class_weight": null,
         "clasificador__l1_ratio": 0.0
       },
-      "umbral": 0.2776236062837081,
+      "umbral": 0.26381738273532324,
       "metrica_seleccion": "pr_auc",
       "regla_seleccion": "modelo_mas_simple_dentro_de_un_error_estandar",
-      "limite_equivalencia_pr_auc": 0.6063637904471001,
-      "pr_auc_validacion": 0.6291958734999129,
-      "roc_auc_validacion": 0.7935954487704086
+      "limite_equivalencia_pr_auc": 0.5900740156668965,
+      "pr_auc_validacion": 0.6173497755829958,
+      "roc_auc_validacion": 0.7877339421581986
     }
   },
   "artefactos": [

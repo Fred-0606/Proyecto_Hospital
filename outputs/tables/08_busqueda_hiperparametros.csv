@@ -10,14 +10,14 @@ A,random_forest,"{""clasificador__max_depth"": 12, ""clasificador__min_samples_l
 A,random_forest,"{""clasificador__max_depth"": null, ""clasificador__min_samples_leaf"": 20}",0.7194570897134189,0.6123251147618733,0.5995198399650098,False
 A,xgboost,"{""clasificador__learning_rate"": 0.1, ""clasificador__max_depth"": 3}",0.6358525033377017,0.6142780314963472,0.6018426313551307,True
 A,xgboost,"{""clasificador__learning_rate"": 0.1, ""clasificador__max_depth"": 5}",0.7265548664379476,0.6092199700178813,0.597756366077499,False
-B,regresion_logistica,"{""clasificador__C"": 0.1, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 0.0}",0.6075262905940866,0.629195873499913,0.7935954487704084,True
-B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 0.0}",0.6096540295931396,0.6277436303903949,0.7927510460312291,False
-B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 0.5}",0.6094447567691775,0.6283000458723818,0.7929705319432593,False
-B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 1.0}",0.6091624792885814,0.6285963096546789,0.793092396491213,False
-B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": ""balanced"", ""clasificador__l1_ratio"": 0.0}",0.6059271227947762,0.6249656267471698,0.7920704764340747,False
-B,arbol_decision,"{""clasificador__class_weight"": ""balanced"", ""clasificador__max_depth"": 4, ""clasificador__min_samples_leaf"": 100}",0.5041653872719148,0.5453367491165415,0.763422914947953,False
-B,arbol_decision,"{""clasificador__class_weight"": ""balanced"", ""clasificador__max_depth"": 8, ""clasificador__min_samples_leaf"": 100}",0.5645210958018172,0.5744014128100801,0.7718787555077077,True
-B,random_forest,"{""clasificador__max_depth"": 12, ""clasificador__min_samples_leaf"": 20}",0.6257038821073507,0.6248334278782178,0.7935972138544368,False
-B,random_forest,"{""clasificador__max_depth"": null, ""clasificador__min_samples_leaf"": 20}",0.6648868014708038,0.6259307198949602,0.7941841585229863,True
-B,xgboost,"{""clasificador__learning_rate"": 0.1, ""clasificador__max_depth"": 3}",0.6455637257404796,0.6366375800710184,0.7997856002912358,False
-B,xgboost,"{""clasificador__learning_rate"": 0.1, ""clasificador__max_depth"": 5}",0.7233688630276723,0.6394662101975666,0.7996622564514506,True
+B,regresion_logistica,"{""clasificador__C"": 0.1, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 0.0}",0.5969430232746032,0.6173497755829958,0.7877339421581986,True
+B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 0.0}",0.5976846701564121,0.6157034034209572,0.7868766254603804,False
+B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 0.5}",0.5975628974570588,0.6161053084678132,0.7870139805916349,False
+B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": null, ""clasificador__l1_ratio"": 1.0}",0.5973928915871947,0.6164768866560528,0.7871778224075141,False
+B,regresion_logistica,"{""clasificador__C"": 1.0, ""clasificador__class_weight"": ""balanced"", ""clasificador__l1_ratio"": 0.0}",0.5947618634317839,0.6132225510733708,0.7860640408230264,False
+B,arbol_decision,"{""clasificador__class_weight"": ""balanced"", ""clasificador__max_depth"": 4, ""clasificador__min_samples_leaf"": 100}",0.4955079347692769,0.5323714260829451,0.7572442916531891,False
+B,arbol_decision,"{""clasificador__class_weight"": ""balanced"", ""clasificador__max_depth"": 8, ""clasificador__min_samples_leaf"": 100}",0.5510979282330482,0.5670004005996696,0.7676103802074163,True
+B,random_forest,"{""clasificador__max_depth"": 12, ""clasificador__min_samples_leaf"": 20}",0.6234696197772479,0.6150118478892413,0.7884614459855567,False
+B,random_forest,"{""clasificador__max_depth"": null, ""clasificador__min_samples_leaf"": 20}",0.6655710827692627,0.6175226555345302,0.7887653720455733,True
+B,xgboost,"{""clasificador__learning_rate"": 0.1, ""clasificador__max_depth"": 3}",0.637441323728767,0.625846012366351,0.7934520837111444,True
+B,xgboost,"{""clasificador__learning_rate"": 0.1, ""clasificador__max_depth"": 5}",0.7192876122633436,0.622937728970224,0.7911799475773552,False

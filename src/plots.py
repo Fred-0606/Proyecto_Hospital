@@ -201,23 +201,6 @@ def plot_target_rate_by_hour(rates: pd.DataFrame, output_path: Path) -> Path:
     return _finish_figure(figure, output_path)
 
 
-def plot_top_specialties(frequencies: pd.DataFrame, output_path: Path) -> Path:
-    """Grafica las especialidades individuales más frecuentes del modelo B."""
-    ordered = frequencies.sort_values("registros", ascending=True)
-    display_labels = ordered["especialidad"].str.replace("_", " ").str.capitalize()
-    figure, axis = plt.subplots(figsize=(11, 6.5))
-    bars = axis.barh(display_labels, ordered["registros"], color=TEAL, alpha=0.9)
-    axis.bar_label(bars, labels=[f"{value:,.0f}" for value in ordered["registros"]], padding=3)
-    axis.set_title("Especialidades tratantes más frecuentes — Modelo B", loc="left", fontsize=16, fontweight="bold")
-    axis.set_xlabel("Número de registros (una atención puede incluir varias especialidades)")
-    axis.set_ylabel("")
-    axis.grid(axis="x", color=GRID, alpha=0.65)
-    axis.set_xlim(0, float(ordered["registros"].max()) * 1.13)
-    _style_axis(axis)
-    figure.tight_layout()
-    return _finish_figure(figure, output_path)
-
-
 def plot_baseline_confusion_matrices(
     validation_metrics: pd.DataFrame,
     output_path: Path,

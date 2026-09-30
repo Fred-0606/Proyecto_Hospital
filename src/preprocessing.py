@@ -8,7 +8,6 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from sklearn.compose import ColumnTransformer
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
@@ -74,12 +73,10 @@ MODEL_B_CATEGORICAL = [
     "mes_conducta",
     "fin_semana_conducta",
 ]
-MODEL_B_SPECIALTIES = ["especialidades_tratantes"]
 MODEL_B_PREDICTORS = (
     MODEL_B_NUMERIC
     + MODEL_B_DURATION
     + MODEL_B_CATEGORICAL
-    + MODEL_B_SPECIALTIES
 )
 
 MODEL_A_DEVELOPMENT_PATH = PROCESSED_DATA_DIR / "04_ingreso_desarrollo.parquet"
@@ -160,11 +157,6 @@ def build_expanding_time_splits(
     return splits
 
 
-def _flatten_text_column(values: Any) -> np.ndarray:
-    """Convierte la columna 2D recibida por sklearn en una secuencia de textos."""
-    return np.asarray(values, dtype=object).reshape(-1).astype(str)
-
-
 def _to_string_matrix(values: Any) -> np.ndarray:
     """Homogeneiza categorías numéricas y textuales antes de codificarlas."""
     return np.asarray(values, dtype=object).astype(str)
@@ -207,34 +199,6 @@ def _categorical_pipeline() -> Pipeline:
     )
 
 
-def _specialty_pipeline() -> Pipeline:
-    """Codifica cada especialidad individual del campo multietiqueta."""
-    return Pipeline(
-        steps=[
-            (
-                "imputacion",
-                SimpleImputer(
-                    strategy="constant",
-                    fill_value="sin_especialidad",
-                    missing_values=pd.NA,
-                ),
-            ),
-            (
-                "texto_1d",
-                FunctionTransformer(_flatten_text_column, validate=False),
-            ),
-            (
-                "codificacion",
-                CountVectorizer(
-                    binary=True,
-                    lowercase=False,
-                    token_pattern=r"[^ |]+",
-                ),
-            ),
-        ]
-    )
-
-
 def build_model_a_preprocessor() -> ColumnTransformer:
     """Construye el preprocesador interpretable del modelo de ingreso."""
     return ColumnTransformer(
@@ -257,7 +221,6 @@ def build_model_b_preprocessor() -> ColumnTransformer:
                 MODEL_B_DURATION,
             ),
             ("categoricas", _categorical_pipeline(), MODEL_B_CATEGORICAL),
-            ("especialidades", _specialty_pipeline(), MODEL_B_SPECIALTIES),
         ],
         remainder="drop",
     )

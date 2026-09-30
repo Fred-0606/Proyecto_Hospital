@@ -16,9 +16,9 @@ Hasta esta etapa todas las decisiones se han tomado con entrenamiento y validaci
 
 Antes de habilitar esta etapa se debe validar
 `config/modelos_congelados.yml`. Ese manifiesto fija los predictores, modelos,
-hiperparámetros, umbrales, semilla, corte temporal y huellas SHA-256 de los
-artefactos de selección. Si cualquiera cambia, la evaluación debe detenerse y
-no abrir la prueba.
+hiperparámetros, umbrales, semilla, corte temporal, commit metodológico y
+huellas SHA-256 de los artefactos y de las cuatro particiones. Si cualquiera
+cambia, la evaluación debe detenerse y no abrir la prueba.
 
 ```python
 from src.model_freeze import validate_frozen_configuration
@@ -26,8 +26,33 @@ from src.model_freeze import validate_frozen_configuration
 configuracion_congelada = validate_frozen_configuration()
 ```
 
-El manifiesto registra `prueba_final_abierta: false`. Este valor solo podrá
-cambiarse como parte de la ejecución controlada y única de esta etapa.
+El manifiesto registra `prueba_final_abierta: false` y permanecerá inmutable.
+La apertura no se indicará alterando ese archivo: quedará documentada en
+`outputs/metrics/09_apertura_prueba.json`.
+
+## Protocolo único de apertura
+
+La apertura requiere una confirmación explícita, un repositorio Git limpio,
+huellas válidas y ausencia de un registro anterior. El archivo se crea en modo
+exclusivo, por lo que una segunda ejecución se detendrá antes de cargar la
+prueba.
+
+```python
+from src.model_freeze import (
+    build_frozen_pipeline,
+    create_test_opening_record,
+)
+
+# Este bloque solo se habilitará al autorizar formalmente la evaluación final.
+registro_apertura = create_test_opening_record(confirm_opening=True)
+
+pipeline_a = build_frozen_pipeline("A", configuracion_congelada)
+pipeline_b = build_frozen_pipeline("B", configuracion_congelada)
+```
+
+El registro conserva la fecha y hora UTC, las huellas de las particiones, la
+huella del manifiesto y el commit exacto de ejecución. No contiene datos de
+pacientes ni resultados del objetivo.
 
 ## Reporte obligatorio por tarea
 

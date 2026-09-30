@@ -86,7 +86,7 @@ La tabla anterior identifica automáticamente las columnas que no varían. Esta 
 
 Para el Modelo A se adopta una selección conservadora: solo se incluyen datos disponibles al terminar el triage. Sala, cama y especialidad se excluyen porque su disponibilidad en ese instante no quedó garantizada.
 
-Para el Modelo B, `sala_observacion` y `cama` pueden conservarse porque están disponibles al registrar la conducta y no se actualizan posteriormente. La disponibilidad temporal de `especialidades_tratantes` se documenta por separado porque el archivo conserva el último valor registrado.
+Para el Modelo B, `sala_observacion` y `cama` pueden conservarse porque están disponibles al registrar la conducta y no se actualizan posteriormente. El servicio médico confirmó que `especialidades_tratantes` puede modificarse o ampliarse según la necesidad y evolución del paciente. Como el archivo conserva su último valor y no el valor existente al registrar la conducta, se excluye de ambos modelos.
 
 ```{python}
 #| label: listas-predictores
@@ -102,7 +102,6 @@ predictors_model_b = [
     "edad",
     "afiliacion",
     "fecha_ingreso",
-    "especialidades_tratantes",
     "sala_observacion",
     "cama",
     "fecha_conducta",
@@ -146,7 +145,7 @@ universal_reasons = {
 }
 
 specific_reasons = {
-    "especialidades_tratantes": "No garantizada al predecir A; disponible con cautela para B.",
+    "especialidades_tratantes": "Variable mutable durante la atención; el último valor puede contener información posterior y se excluye de ambos modelos.",
     "sala_observacion": "No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.",
     "cama": "No disponible para A; disponible al registrar la conducta y sin actualizaciones posteriores para B.",
     "fecha_conducta": "Fin del objetivo A; instante conocido y transformable para B.",
@@ -208,7 +207,11 @@ El bloque final guarda una tabla reducida con la unión de predictores, fuentes 
 
 ```{python}
 #| label: ejecutar-seleccion-analitica
-control_columns = ["fecha_salida", "total_en_salida"]
+control_columns = [
+    "especialidades_tratantes",
+    "fecha_salida",
+    "total_en_salida",
+]
 
 # Primero se construye en memoria la vista esperada. Esta llamada solo selecciona
 # columnas; todavía no escribe ningún artefacto.

@@ -243,7 +243,7 @@ El procedimiento aplicado consta de cuatro pasos:
 3. Homologar cada componente mediante un diccionario explícito de especialidades.
 4. Asignar `otra_especialidad` a componentes no reconocidos y `especialidad_sin_registrar` a los nulos.
 
-No se utiliza similitud difusa automática porque podría fusionar especialidades clínicamente diferentes. Cuando un registro contiene varias especialidades, se conservan todas como etiquetas ordenadas separadas por ` | `. En la etapa de ingeniería se convertirán con codificación multietiqueta, de modo que el orden no genere categorías diferentes.
+No se utiliza similitud difusa automática porque podría fusionar especialidades clínicamente diferentes. Cuando un registro contiene varias especialidades, se conservan todas como etiquetas ordenadas separadas por ` | ` únicamente para la auditoría de calidad. Esta variable no entrará a los modelos porque puede modificarse durante la atención y la fuente conserva su último valor.
 
 ### Sala de observación
 
@@ -303,7 +303,7 @@ display(Markdown(
 ```
 
 
-Las combinaciones de especialidades no deben interpretarse como una nueva taxonomía. El vocabulario individual queda limitado a 41 etiquetas, aunque se observan 459 combinaciones distintas; estas se conservarán hasta convertirlas en indicadores multietiqueta durante la ingeniería de variables.
+Las combinaciones de especialidades no deben interpretarse como una nueva taxonomía. El vocabulario individual queda limitado a 41 etiquetas, aunque se observan 459 combinaciones distintas. La homologación se conserva como evidencia de calidad, no como preparación de una predictora.
 
 Después de completar las transformaciones determinísticas se vuelve a guardar el artefacto de la etapa y se actualizan las auditorías.
 
