@@ -42,6 +42,8 @@ la ejecución se detiene antes de cargar la prueba.
 
 ```{python}
 #| label: validar-congelamiento-etapa-09
+import json
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -62,7 +64,6 @@ from sklearn.pipeline import Pipeline
 from src.data_io import require_file, save_dataframe_as_csv, save_json
 from src.model_freeze import (
     TEST_OPENING_RECORD_PATH,
-    create_test_opening_record,
     validate_frozen_configuration,
 )
 from src.paths import FIGURES_DIR, METRICS_DIR, TABLES_DIR
@@ -112,13 +113,25 @@ partir de lo observado en prueba.
 
 ## Apertura única y trazable
 
-La autorización de esta etapa se registra antes de leer las particiones de
-prueba. El registro exige que Git esté limpio y se crea en modo exclusivo: una
-segunda apertura accidental no puede sobrescribirlo.
+La autorización de esta etapa se registra desde una sesión de terminal limpia,
+antes de ejecutar este informe y antes de leer las particiones de prueba. El
+archivo se crea en modo exclusivo: una segunda apertura accidental no puede
+sobrescribirlo. Durante el renderizado, Quarto se limita a leer y verificar ese
+registro ya creado.
 
 ```{python}
 #| label: registrar-apertura-etapa-09
-registro_apertura = create_test_opening_record(confirm_opening=True)
+require_file(
+    TEST_OPENING_RECORD_PATH,
+    "Registre primero la apertura única desde una sesión Git limpia.",
+)
+with TEST_OPENING_RECORD_PATH.open(encoding="utf-8") as archivo:
+    registro_apertura = json.load(archivo)
+
+if registro_apertura.get("estado") != "prueba_final_abierta":
+    raise ValueError("El registro no confirma la apertura de la prueba final.")
+if not registro_apertura.get("confirmacion_explicita"):
+    raise ValueError("El registro no contiene la confirmación explícita requerida.")
 
 display(
     Markdown(
