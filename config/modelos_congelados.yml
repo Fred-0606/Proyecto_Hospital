@@ -1,7 +1,7 @@
 estado: congelado_previo_a_prueba
 fecha_congelamiento: "2026-09-29"
 prueba_final_abierta: false
-commit_metodologico: 985ce01b4122f6c806e8d8591e3a8c88e9a177bd
+commit_metodologico: 2658492a80b8b1dc99bf24ca40d80ad975d157e1
 random_state: 42
 fecha_inicio_prueba: "2026-03-01"
 metrica_seleccion: pr_auc
