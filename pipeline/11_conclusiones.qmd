@@ -1,58 +1,298 @@
-﻿---
+---
 title: "Etapa 11 — Conclusiones"
-subtitle: "Síntesis de los dos modelos de demora"
-format: html
+subtitle: "Síntesis, utilidad y límites de los modelos A y B"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
 execute:
-  enabled: false
+  echo: true
+  output: true
+  error: false
+  warning: false
 ---
 
 ## Propósito de la etapa
 
-Integrar los hallazgos del modelo de ingreso y del modelo de salida, manteniendo separados sus momentos de uso, predictores y limitaciones.
+Integrar los resultados del proyecto y responder qué fue posible anticipar en
+los dos momentos del servicio de urgencias. Esta etapa no entrena modelos, no
+calcula nuevos umbrales y no vuelve a leer las particiones de prueba. Sus
+conclusiones proceden exclusivamente de los artefactos agregados y oficiales de
+las etapas anteriores.
 
-La conclusión retomará las dos preguntas formuladas en la portada. Primero responderá qué fue posible predecir en cada momento; después explicará qué diferencias se observaron entre los procesos y qué limitaciones condicionan su aplicación.
+## Evidencias utilizadas
 
-## Estructura prevista
+El siguiente código lee los resultados finales y las tablas de interpretación.
+Esta lectura visible evita transcribir métricas manualmente y permite rastrear
+cada afirmación hasta su archivo de origen.
 
-El relato final seguirá el orden del pipeline para que cada afirmación pueda rastrearse hasta una evidencia previa:
+```{python}
+#| label: leer-evidencias-conclusiones-etapa-11
+import json
 
-1. Respuesta a la pregunta del modelo de ingreso.
-2. Respuesta a la pregunta del modelo de salida.
-3. Comparación de factores predictivos entre ambos procesos.
-4. Utilidad clínica y operativa potencial.
-5. Riesgos de fuga, calidad y actualización de variables.
-6. Validez externa y trabajo futuro.
+import pandas as pd
+from IPython.display import Markdown, display
 
-## Limitaciones que deberán permanecer visibles
+from src.data_io import require_file
+from src.paths import METRICS_DIR, TABLES_DIR
 
-Las limitaciones no se relegarán a una nota final. Se integrarán en la interpretación de resultados para mostrar qué alcance permite realmente la fuente disponible.
+FINAL_RESULTS_PATH = METRICS_DIR / "09_evaluacion_final.json"
+INTERPRETABILITY_PATH = METRICS_DIR / "10_interpretabilidad.json"
+COEFFICIENTS_A_PATH = TABLES_DIR / "10_coeficientes_modelo_a.csv"
+COEFFICIENTS_B_PATH = TABLES_DIR / "10_coeficientes_modelo_b.csv"
 
-- El archivo conserva el último valor de campos actualizables.
-- La disponibilidad temporal se estableció con conocimiento clínico, pero algunas variables conservan riesgo residual.
-- Los casos con intervalos negativos deben tratarse por objetivo y documentarse.
-- El egreso medido por `fecha_salida` es administrativo, no necesariamente salida física.
-- Los resultados son predictivos y no demuestran relaciones causales.
+for ruta, instruccion in (
+    (FINAL_RESULTS_PATH, "Ejecute primero la etapa 09 de evaluación final."),
+    (INTERPRETABILITY_PATH, "Ejecute primero la etapa 10 de interpretabilidad."),
+    (COEFFICIENTS_A_PATH, "Genere primero los coeficientes del Modelo A."),
+    (COEFFICIENTS_B_PATH, "Genere primero los coeficientes del Modelo B."),
+):
+    require_file(ruta, instruccion)
 
-## Regla de cierre
+with FINAL_RESULTS_PATH.open(encoding="utf-8") as archivo:
+    resultados_finales = json.load(archivo)
+with INTERPRETABILITY_PATH.open(encoding="utf-8") as archivo:
+    metadatos_interpretabilidad = json.load(archivo)
 
-Ninguna afirmación final se redactará antes de disponer de las métricas de prueba y de las evidencias generadas en las etapas anteriores.
+coeficientes_a = pd.read_csv(COEFFICIENTS_A_PATH)
+coeficientes_b = pd.read_csv(COEFFICIENTS_B_PATH)
 
-De este modo, la conclusión será una síntesis respaldada por el pipeline y no una repetición de expectativas planteadas antes del modelado.
+assert resultados_finales["regla"] == "evaluacion_unica_sin_reajuste_posterior"
+assert metadatos_interpretabilidad["usa_datos_prueba"] is False
+assert metadatos_interpretabilidad["usa_importancia_permutacion"] is False
+```
 
-## Trazabilidad de cada afirmación
+La etapa 09 aporta el desempeño observado una sola vez sobre prueba. La etapa 10
+aporta asociaciones calculadas únicamente con desarrollo. Por tanto, desempeño
+e interpretación conservan funciones diferentes y no se mezclan para volver a
+optimizar los modelos.
 
-La versión final incluirá una tabla de trazabilidad. Cada conclusión cuantitativa
-deberá señalar el artefacto y la etapa que la sustentan, por ejemplo:
+## Resultados finales de los dos modelos
 
-| Afirmación | Evidencia requerida | Etapa de origen |
+Además de las métricas principales, se calculan dos cantidades descriptivas a
+partir de la matriz de confusión ya guardada:
+
+- **tasa de alertas:** proporción de casos clasificados como estancia prolongada;
+- **especificidad:** proporción de estancias no prolongadas correctamente
+  identificadas.
+
+Estas cantidades ayudan a valorar la carga operativa de las alertas y no cambian
+ninguna decisión del modelo.
+
+```{python}
+#| label: resumir-resultados-finales-etapa-11
+filas_resultados = []
+for modelo, clave in (("A", "modelo_a"), ("B", "modelo_b")):
+    metricas = resultados_finales[clave]
+    alertas = metricas["verdaderos_positivos"] + metricas["falsos_positivos"]
+    negativos_reales = metricas["verdaderos_negativos"] + metricas["falsos_positivos"]
+    filas_resultados.append(
+        {
+            "modelo": modelo,
+            "registros": metricas["registros"],
+            "prevalencia": metricas["prevalencia"],
+            "recall": metricas["recall"],
+            "precision": metricas["precision"],
+            "f1": metricas["f1"],
+            "roc_auc": metricas["roc_auc"],
+            "pr_auc": metricas["pr_auc"],
+            "tasa_alertas": alertas / metricas["registros"],
+            "especificidad": metricas["verdaderos_negativos"] / negativos_reales,
+        }
+    )
+
+tabla_resultados = pd.DataFrame(filas_resultados)
+tabla_resultados
+```
+
+## Conclusión del Modelo A: alerta temprana después del triage
+
+```{python}
+#| label: conclusion-modelo-a-etapa-11
+metricas_a = resultados_finales["modelo_a"]
+alertas_a = metricas_a["verdaderos_positivos"] + metricas_a["falsos_positivos"]
+especificidad_a = metricas_a["verdaderos_negativos"] / (
+    metricas_a["verdaderos_negativos"] + metricas_a["falsos_positivos"]
+)
+
+display(
+    Markdown(
+        f"El Modelo A alcanzó **recall={metricas_a['recall']:.3f}**, "
+        f"**precision={metricas_a['precision']:.3f}**, "
+        f"**F1={metricas_a['f1']:.3f}**, "
+        f"**ROC-AUC={metricas_a['roc_auc']:.3f}** y "
+        f"**PR-AUC={metricas_a['pr_auc']:.3f}** sobre "
+        f"{metricas_a['registros']:,} registros de prueba. Detectó casi todas "
+        f"las estancias prolongadas, pero generó alertas para "
+        f"**{alertas_a / metricas_a['registros']:.1%}** de los casos y su "
+        f"especificidad fue apenas **{especificidad_a:.1%}**."
+    )
+)
+```
+
+El Modelo A cumple el objetivo estadístico de alta sensibilidad, pero el umbral
+seleccionado produce una alerta casi generalizada. Por ello, su F1 relativamente
+alto debe interpretarse junto con la prevalencia elevada del objetivo y la baja
+especificidad. En su forma actual no permite separar con precisión a los
+pacientes que requerirían una intervención distinta.
+
+Su posible utilidad se limita a un apoyo temprano muy sensible, siempre que el
+hospital acepte una gran cantidad de falsos positivos. Antes de cualquier uso
+operativo sería necesario definir qué acción concreta activaría la alerta y si
+el servicio puede asumir esa carga. No debe presentarse como un sistema listo
+para despliegue.
+
+## Conclusión del Modelo B: estimación después de la conducta
+
+```{python}
+#| label: conclusion-modelo-b-etapa-11
+metricas_b = resultados_finales["modelo_b"]
+alertas_b = metricas_b["verdaderos_positivos"] + metricas_b["falsos_positivos"]
+especificidad_b = metricas_b["verdaderos_negativos"] / (
+    metricas_b["verdaderos_negativos"] + metricas_b["falsos_positivos"]
+)
+
+display(
+    Markdown(
+        f"El Modelo B alcanzó **recall={metricas_b['recall']:.3f}**, "
+        f"**precision={metricas_b['precision']:.3f}**, "
+        f"**F1={metricas_b['f1']:.3f}**, "
+        f"**ROC-AUC={metricas_b['roc_auc']:.3f}** y "
+        f"**PR-AUC={metricas_b['pr_auc']:.3f}** sobre "
+        f"{metricas_b['registros']:,} registros de prueba. Identificó "
+        f"**{metricas_b['recall']:.1%}** de las estancias prolongadas, con una "
+        f"tasa de alertas de **{alertas_b / metricas_b['registros']:.1%}** y "
+        f"especificidad de **{especificidad_b:.1%}**."
+    )
+)
+```
+
+El Modelo B ofrece una separación más útil entre pacientes con y sin estancia
+prolongada: su ROC-AUC es mayor y combina recall alto con una especificidad
+considerablemente superior a la del Modelo A. Aun así, su precision cercana al
+50 % implica que aproximadamente la mitad de las alertas son falsos positivos.
+
+El modelo puede considerarse un candidato para apoyar seguimiento y planeación
+del flujo después de registrar la conducta, pero no para decidir automáticamente
+altas, hospitalizaciones, traslados o prioridades clínicas.
+
+## Por qué no existe un único modelo ganador
+
+Los dos modelos responden preguntas diferentes:
+
+| Dimensión | Modelo A | Modelo B |
 |---|---|---|
-| Desempeño final del Modelo A | Métricas sobre prueba futura | 09 |
-| Desempeño final del Modelo B | Métricas sobre prueba futura | 09 |
-| Variables asociadas | Coeficientes o permutación | 10 |
-| Estabilidad temporal | Métricas de los cinco pliegues | 07–08 |
-| Limitaciones de la fuente | Auditorías de calidad y disponibilidad | 01–04 |
+| Momento | Después del triage | Al registrar la conducta |
+| Ventaja | Mayor anticipación | Mayor capacidad discriminativa |
+| Principal dificultad | Exceso de alertas | Cerca de la mitad de las alertas son falsas |
+| Uso potencial | Vigilancia temprana muy sensible | Apoyo a seguimiento y planeación operativa |
 
-Esta tabla impedirá presentar una expectativa metodológica como si fuera un
-hallazgo observado. La etapa 11 seguirá sin código de entrenamiento: su función
-será integrar resultados ya persistidos y verificables.
+El Modelo B discrimina mejor, pero opera más tarde y utiliza información que no
+existía cuando se realiza la predicción A. Por esa razón, no reemplaza al Modelo
+A ni debe compararse como si ambos resolvieran exactamente la misma tarea.
 
+## Qué aportó la ingeniería de variables
+
+El proyecto incorporó calendario, fin de semana, volumen de ingresos durante las
+3, 6 y 24 horas anteriores y carga activa reconstruida en el momento de la
+conducta. Estas variables permiten representar el contexto operativo disponible
+en cada instante sin usar eventos futuros.
+
+Los coeficientes muestran asociaciones plausibles que merecen seguimiento:
+
+- En el Modelo A, edad y volumen de ingresos de 24 horas presentan asociaciones
+  positivas; las ventanas de 3, 6 y 24 horas están correlacionadas y pueden
+  repartirse la señal.
+- En el Modelo B, `pacientes_pendientes_de_salida` presenta una asociación
+  positiva relevante. `pacientes_activos_en_ingreso` tiene una asociación
+  positiva menor.
+- Conducta, sala de observación y grupo de cama también aparecen entre las
+  asociaciones de mayor magnitud del Modelo B.
+
+Estas observaciones no demuestran cuánto mejoró cada variable por separado,
+porque el proyecto no realizó una ablación individual de todos los predictores.
+Tampoco prueban que aumentar la carga cause una estancia prolongada.
+
+## Interpretación clínica y operativa prudente
+
+Los resultados apoyan tres conclusiones:
+
+1. Existe señal predictiva desde el ingreso, pero es limitada para separar casos
+   con el umbral seleccionado.
+2. La información disponible al registrar la conducta mejora claramente la
+   discriminación del proceso de salida.
+3. El contexto operativo aporta información, pero no sustituye la valoración
+   clínica ni identifica causas de demora.
+
+Los coeficientes categóricos dependen de la codificación completa y de la
+regularización. Por eso, un odds ratio de una categoría no debe interpretarse
+como una comparación aislada contra todas las demás. En las variables numéricas
+estandarizadas, el odds ratio corresponde a una desviación estándar y no a una
+unidad original.
+
+## Limitaciones
+
+- El análisis es retrospectivo y procede de una sola fuente hospitalaria.
+- Los objetivos se reconstruyeron desde marcas temporales. Esto mejora la
+  consistencia matemática, pero no elimina limitaciones de calidad y trazabilidad
+  del registro original.
+- `fecha_salida` representa un registro administrativo y puede no coincidir
+  exactamente con la salida física del paciente.
+- En una versión anterior se observó la prevalencia de la prueba. Esa información
+  no se utilizó para seleccionar variables, ajustar transformadores, entrenar
+  modelos ni escoger umbrales, pero debe permanecer declarada.
+- La carga activa se reconstruyó con intervalos temporales completos y coherentes;
+  no representa directamente ocupación física, camas disponibles o dotación de
+  personal.
+- `especialidades_tratantes` se excluyó porque puede cambiar durante la atención
+  y la fuente conserva el último valor, no su historial.
+- Los coeficientes son asociaciones predictivas y no efectos causales.
+- El desempeño puede cambiar cuando se modifiquen procesos, población, sistemas
+  de información o criterios de registro.
+- No se realizó validación externa ni prospectiva.
+- Los umbrales fueron seleccionados con un criterio estadístico y todavía no han
+  sido aprobados como reglas operativas por el hospital.
+
+## Recomendaciones
+
+1. Realizar una validación prospectiva silenciosa, sin mostrar alertas al equipo,
+   para comprobar desempeño y estabilidad en datos nuevos.
+2. Definir con el servicio médico qué acción correspondería a cada alerta y qué
+   costos tienen los falsos positivos y falsos negativos.
+3. Revisar especialmente la viabilidad del Modelo A, dado que su umbral produce
+   alertas para casi todos los casos.
+4. Mejorar la trazabilidad histórica de especialidades, movimientos, camas,
+   ocupación y salida física.
+5. Monitorear prevalencia, faltantes, categorías nuevas, calibración y desempeño
+   temporal antes de considerar reentrenamiento.
+6. Aplicar cualquier recalibración o cambio de umbral mediante un nuevo protocolo
+   de desarrollo y una nueva prueba futura independiente.
+7. Mantener supervisión humana y no utilizar las predicciones para decisiones
+   clínicas automáticas.
+
+## Trazabilidad de las conclusiones
+
+| Afirmación | Evidencia oficial | Etapa |
+|---|---|---:|
+| Definición de los dos momentos predictivos | `00_contexto_y_objetivos.qmd` | 00 |
+| Calidad y reconstrucción de duraciones | `03_calidad_datos.json` | 03 |
+| Separación temporal de desarrollo y prueba | `04_particion_temporal.json` | 04 |
+| Variables derivadas y preprocesamiento | `06_feature_engineering_preprocesamiento.json` | 06 |
+| Selección de modelos y umbrales | `08_seleccion_modelos.json` | 08 |
+| Desempeño final de A y B | `09_evaluacion_final.json` | 09 |
+| Coeficientes y odds ratios | `10_coeficientes_modelo_a.csv` y `10_coeficientes_modelo_b.csv` | 10 |
+
+## Conclusión general
+
+Fue posible construir un flujo reproducible para anticipar estancias prolongadas
+en dos momentos distintos del servicio de urgencias. El Modelo A ofrece una
+alerta muy temprana y extremadamente sensible, pero su baja especificidad limita
+su utilidad práctica actual. El Modelo B aprovecha información disponible más
+tarde y alcanza una discriminación más sólida, por lo que presenta mayor
+potencial como apoyo operativo.
+
+Los resultados no justifican todavía un despliegue clínico. El aporte principal
+del proyecto es demostrar, con separación temporal, prueba independiente y
+trazabilidad completa, que existe señal predictiva aprovechable y establecer qué
+debe validarse antes de convertirla en una herramienta real del hospital.

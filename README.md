@@ -95,10 +95,13 @@ La etapa 01 utiliza `data/raw/BD_CENSO_2024_2026.xlsx` y anonimiza los identific
 
 ## Estado
 
-Las etapas 00 a 09 están terminadas. Las etapas 10 y 11 permanecen pendientes:
-interpretabilidad y conclusiones. La etapa 09 realizó la evaluación final única
-sobre la prueba temporal reservada, sin reajustar modelos, hiperparámetros ni
-umbrales a partir de sus resultados.
+Las etapas 00 a 11 están terminadas. La etapa 09 realizó la evaluación final
+única sobre la prueba temporal reservada, sin reajustar modelos, hiperparámetros
+ni umbrales a partir de sus resultados. La etapa 10 interpreta las regresiones
+logísticas mediante coeficientes y odds ratios calculados exclusivamente con
+desarrollo; no utiliza importancia por permutación ni vuelve a evaluar la
+prueba. La etapa 11 integra desempeño, utilidad, asociaciones, limitaciones y
+recomendaciones sin entrenar ni evaluar modelos nuevamente.
 
 La configuración previa a la evaluación final está congelada en
 `config/modelos_congelados.yml`. La etapa 09 debe validar ese manifiesto y sus

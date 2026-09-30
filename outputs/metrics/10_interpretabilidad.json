@@ -1,0 +1,16 @@
+{
+  "metodo": "coeficientes_y_odds_ratios_de_regresion_logistica",
+  "usa_importancia_permutacion": false,
+  "usa_datos_prueba": false,
+  "modelo_a": {
+    "predictores_originales": 10,
+    "variables_transformadas": 62,
+    "tabla": "10_coeficientes_modelo_a.csv"
+  },
+  "modelo_b": {
+    "predictores_originales": 17,
+    "variables_transformadas": 153,
+    "tabla": "10_coeficientes_modelo_b.csv"
+  },
+  "figura": "10_coeficientes_modelos.png"
+}

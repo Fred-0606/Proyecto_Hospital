@@ -1,79 +1,458 @@
-﻿---
+---
 title: "Etapa 10 — Interpretabilidad"
-subtitle: "Factores predictivos en cada momento operativo"
-format: html
+subtitle: "Asociaciones predictivas de los modelos finales"
+format:
+  html:
+    code-fold: false
+    df-print: paged
+jupyter: python3
 execute:
-  enabled: false
+  echo: true
+  output: true
+  error: false
+  warning: false
 ---
 
 ## Propósito de la etapa
 
-Explicar qué variables se asocian con las predicciones de ingreso y salida, sin convertir asociaciones en conclusiones causales.
+Explicar qué información utiliza cada regresión logística para estimar una
+estancia prolongada. La etapa traduce los coeficientes del modelo a asociaciones
+comprensibles, sin modificar predictores, parámetros, umbrales ni resultados de
+la evaluación final.
 
-Una métrica resume cuánto acierta un modelo, pero no explica qué información utiliza. Esta etapa traducirá el comportamiento estadístico en patrones comprensibles para lectores clínicos y técnicos.
+La interpretación se calcula exclusivamente con los conjuntos de desarrollo.
+Las particiones de prueba no se cargan ni se vuelven a evaluar.
 
-## Preguntas interpretativas
+## Alcance de la interpretación
 
-Las explicaciones se organizarán según el momento operativo, porque una misma variable puede tener un significado diferente antes y después de la conducta.
+Para cada modelo se presentarán:
 
-### Modelo de ingreso
+- el coeficiente de cada variable transformada;
+- su valor absoluto, utilizado solo para ordenar la tabla;
+- el *odds ratio* o razón de momios, calculado como `exp(coeficiente)`;
+- la dirección de la asociación predictiva;
+- las asociaciones positivas y negativas de mayor magnitud.
 
-- ¿Qué información disponible después del triage aumenta o reduce la predicción de demora?
-- ¿Las variables operativas dominan sobre las características iniciales del paciente?
-- ¿El comportamiento se mantiene entre turnos y niveles de triage?
+No se utilizará importancia por permutación. Los modelos finales son regresiones
+logísticas y sus propios coeficientes proporcionan una explicación directa,
+reproducible y suficiente para el alcance académico del proyecto.
 
-### Modelo de salida
+## Cómo se interpreta un coeficiente
 
-- ¿Qué papel tienen la conducta y el tiempo ya consumido en ingreso?
-- ¿La ubicación inicial aporta información estable o refleja disponibilidad circunstancial?
-- ¿Las explicaciones son consistentes en los diferentes periodos temporales?
+La regresión logística modela los *odds* de una estancia prolongada. Un
+coeficiente positivo aumenta los *odds* estimados y uno negativo los reduce. Al
+aplicar la función exponencial se obtiene el *odds ratio*:
 
-## Métodos previstos
-
-Se elegirá el método más sencillo compatible con cada modelo seleccionado. La intención no es acumular gráficos de explicabilidad, sino responder preguntas concretas sobre estabilidad y plausibilidad.
-
-- Coeficientes estandarizados para modelos lineales.
-- Importancia por permutación calculada sobre validación o prueba.
-- Explicaciones locales agregadas solo cuando sean necesarias.
-
-No se publicarán textos clínicos ni registros individuales.
-
-Cada hallazgo se describirá como asociación predictiva. Incluso una variable muy importante puede representar organización del servicio, disponibilidad o documentación, y no una causa directa de la demora.
-
-## Cómo se calcularán las explicaciones
-
-El documento distinguirá el método utilizado y los datos sobre los que se
-calcula. Para una regresión logística, cada coeficiente se vinculará con el nombre
-de la columna producida por el preprocesador:
-
-```python
-feature_names = fitted_pipeline[
-    "preprocesamiento"
-].get_feature_names_out()
-coefficients = fitted_pipeline["clasificador"].coef_[0]
-
-coefficient_table = pd.DataFrame({
-    "variable_transformada": feature_names,
-    "coeficiente": coefficients,
-    "odds_ratio": np.exp(coefficients),
-}).sort_values("coeficiente", key=abs, ascending=False)
+```text
+odds_ratio = exp(coeficiente)
 ```
 
-Para modelos no lineales se mostrará explícitamente la permutación sobre un
-conjunto reservado. La variable se permuta y se mide la pérdida de desempeño; no
-se utilizará la importancia interna del árbol como sustituto automático:
+- Un valor igual a 1 indica ausencia de cambio en los *odds*.
+- Un valor mayor que 1 indica una asociación positiva.
+- Un valor menor que 1 indica una asociación negativa.
 
-```python
-permutation = permutation_importance(
-    fitted_pipeline,
-    X_evaluation,
-    y_evaluation,
-    scoring="average_precision",
-    n_repeats=20,
-    random_state=42,
+Esto no equivale a un cambio directo en la probabilidad y tampoco demuestra
+causalidad.
+
+## Preparación
+
+El siguiente bloque importa los componentes concretos que se usarán. Las rutas
+de prueba no se importan deliberadamente.
+
+```{python}
+#| label: preparar-interpretabilidad-etapa-10
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from IPython.display import Markdown, display
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+
+from src.data_io import (
+    require_file,
+    save_dataframe_as_csv,
+    save_json,
+)
+from src.model_freeze import load_frozen_configuration
+from src.paths import FIGURES_DIR, METRICS_DIR, TABLES_DIR
+from src.preprocessing import (
+    MODEL_A_CATEGORICAL,
+    MODEL_A_DEVELOPMENT_PATH,
+    MODEL_A_NUMERIC,
+    MODEL_A_PREDICTORS,
+    MODEL_A_TARGET,
+    MODEL_B_CATEGORICAL,
+    MODEL_B_DEVELOPMENT_PATH,
+    MODEL_B_DURATION,
+    MODEL_B_NUMERIC,
+    MODEL_B_PREDICTORS,
+    MODEL_B_TARGET,
+    build_model_a_preprocessor,
+    build_model_b_preprocessor,
+)
+
+COEFFICIENTS_A_PATH = TABLES_DIR / "10_coeficientes_modelo_a.csv"
+COEFFICIENTS_B_PATH = TABLES_DIR / "10_coeficientes_modelo_b.csv"
+COEFFICIENT_FIGURE_PATH = FIGURES_DIR / "10_coeficientes_modelos.png"
+INTERPRETABILITY_METRICS_PATH = METRICS_DIR / "10_interpretabilidad.json"
+
+configuracion = load_frozen_configuration()
+
+require_file(
+    MODEL_A_DEVELOPMENT_PATH,
+    "Ejecute primero la etapa 04 para generar el desarrollo del Modelo A.",
+)
+require_file(
+    MODEL_B_DEVELOPMENT_PATH,
+    "Ejecute primero la etapa 04 para generar el desarrollo del Modelo B.",
+)
+
+desarrollo_a = pd.read_parquet(MODEL_A_DEVELOPMENT_PATH)
+desarrollo_b = pd.read_parquet(MODEL_B_DEVELOPMENT_PATH)
+
+pd.DataFrame(
+    [
+        {
+            "modelo": "A",
+            "registros_desarrollo": len(desarrollo_a),
+            "predictores_originales": len(MODEL_A_PREDICTORS),
+        },
+        {
+            "modelo": "B",
+            "registros_desarrollo": len(desarrollo_b),
+            "predictores_originales": len(MODEL_B_PREDICTORS),
+        },
+    ]
 )
 ```
 
-Estos bloques fijan el procedimiento que deberá quedar visible cuando exista un
-modelo seleccionado; todavía no generan interpretaciones.
+## Reconstrucción visible de los modelos
 
+Los modelos se reconstruyen con los parámetros congelados en la etapa 08. El
+código muestra cada argumento de las regresiones y la unión con el
+preprocesamiento documentado en la etapa 06.
+
+```{python}
+#| label: reconstruir-modelos-etapa-10
+parametros_a = configuracion["modelos"]["A"]["clasificador"]
+parametros_b = configuracion["modelos"]["B"]["clasificador"]
+
+clasificador_a = LogisticRegression(
+    solver=parametros_a["solver"],
+    C=parametros_a["C"],
+    l1_ratio=parametros_a["l1_ratio"],
+    class_weight=parametros_a["class_weight"],
+    tol=parametros_a["tol"],
+    max_iter=parametros_a["max_iter"],
+    random_state=parametros_a["random_state"],
+)
+
+clasificador_b = LogisticRegression(
+    solver=parametros_b["solver"],
+    C=parametros_b["C"],
+    l1_ratio=parametros_b["l1_ratio"],
+    class_weight=parametros_b["class_weight"],
+    tol=parametros_b["tol"],
+    max_iter=parametros_b["max_iter"],
+    random_state=parametros_b["random_state"],
+)
+
+modelo_a = Pipeline(
+    steps=[
+        ("preprocesamiento", build_model_a_preprocessor()),
+        ("clasificador", clasificador_a),
+    ]
+)
+modelo_b = Pipeline(
+    steps=[
+        ("preprocesamiento", build_model_b_preprocessor()),
+        ("clasificador", clasificador_b),
+    ]
+)
+
+modelo_a.fit(desarrollo_a[MODEL_A_PREDICTORS], desarrollo_a[MODEL_A_TARGET])
+modelo_b.fit(desarrollo_b[MODEL_B_PREDICTORS], desarrollo_b[MODEL_B_TARGET])
+
+pd.DataFrame(
+    [
+        {
+            "modelo": "A",
+            "iteraciones": int(modelo_a["clasificador"].n_iter_[0]),
+            "max_iter": modelo_a["clasificador"].max_iter,
+        },
+        {
+            "modelo": "B",
+            "iteraciones": int(modelo_b["clasificador"].n_iter_[0]),
+            "max_iter": modelo_b["clasificador"].max_iter,
+        },
+    ]
+)
+```
+
+La prueba no intervino en ninguna llamada a `fit()`. Este ajuste reproduce los
+modelos finales para leer sus coeficientes; no constituye una nueva selección.
+
+## Recuperación de los nombres transformados
+
+El preprocesamiento conserva las variables numéricas y convierte cada variable
+categórica en indicadores. El Modelo B también incorpora un indicador cuando
+falta la duración del proceso de ingreso. La función siguiente reconstruye esos
+nombres en el mismo orden de la matriz utilizada por la regresión.
+
+```{python}
+#| label: nombres-transformados-etapa-10
+def nombres_variables_transformadas(
+    modelo: Pipeline,
+    numericas: list[str],
+    categoricas: list[str],
+    duraciones: list[str] | None = None,
+) -> tuple[list[str], list[str]]:
+    """Devuelve nombres y tipos en el orden recibido por el clasificador."""
+    preprocesador = modelo["preprocesamiento"]
+    nombres = list(numericas)
+    tipos = ["numérica estandarizada"] * len(numericas)
+
+    if duraciones:
+        nombres.extend(duraciones)
+        tipos.extend(["numérica estandarizada"] * len(duraciones))
+        imputador = preprocesador.named_transformers_[
+            "duracion_ingreso"
+        ].named_steps["imputacion"]
+        if hasattr(imputador, "indicator_"):
+            for posicion in imputador.indicator_.features_:
+                nombres.append(f"{duraciones[posicion]}__faltante")
+                tipos.append("indicador binario")
+
+    codificador = preprocesador.named_transformers_[
+        "categoricas"
+    ].named_steps["codificacion"]
+    for variable, categorias in zip(categoricas, codificador.categories_, strict=True):
+        for categoria in categorias:
+            nombres.append(f"{variable}={categoria}")
+            tipos.append("categoría codificada")
+
+    return nombres, tipos
+
+
+nombres_a, tipos_a = nombres_variables_transformadas(
+    modelo_a,
+    MODEL_A_NUMERIC,
+    MODEL_A_CATEGORICAL,
+)
+nombres_b, tipos_b = nombres_variables_transformadas(
+    modelo_b,
+    MODEL_B_NUMERIC,
+    MODEL_B_CATEGORICAL,
+    MODEL_B_DURATION,
+)
+
+assert len(nombres_a) == len(modelo_a["clasificador"].coef_[0])
+assert len(nombres_b) == len(modelo_b["clasificador"].coef_[0])
+
+pd.DataFrame(
+    [
+        {"modelo": "A", "variables_transformadas": len(nombres_a)},
+        {"modelo": "B", "variables_transformadas": len(nombres_b)},
+    ]
+)
+```
+
+## Coeficientes y odds ratios
+
+La siguiente función une cada nombre con su coeficiente. La magnitud absoluta se
+usa para ordenar, pero el signo se conserva porque indica la dirección de la
+asociación.
+
+```{python}
+#| label: calcular-coeficientes-etapa-10
+def tabla_coeficientes(
+    modelo: Pipeline,
+    nombres: list[str],
+    tipos: list[str],
+    etiqueta_modelo: str,
+) -> pd.DataFrame:
+    """Construye una tabla interpretable de la regresión logística ajustada."""
+    coeficientes = modelo["clasificador"].coef_[0]
+    tabla = pd.DataFrame(
+        {
+            "modelo": etiqueta_modelo,
+            "variable_transformada": nombres,
+            "tipo": tipos,
+            "coeficiente": coeficientes,
+            "magnitud_absoluta": np.abs(coeficientes),
+            "odds_ratio": np.exp(coeficientes),
+            "direccion": np.where(
+                coeficientes > 0,
+                "aumenta los odds",
+                np.where(coeficientes < 0, "reduce los odds", "sin cambio"),
+            ),
+        }
+    )
+    return tabla.sort_values("magnitud_absoluta", ascending=False).reset_index(
+        drop=True
+    )
+
+
+coeficientes_a = tabla_coeficientes(modelo_a, nombres_a, tipos_a, "A")
+coeficientes_b = tabla_coeficientes(modelo_b, nombres_b, tipos_b, "B")
+
+display(Markdown("### Modelo A — ingreso"))
+display(coeficientes_a.head(20))
+
+display(Markdown("### Modelo B — salida"))
+display(coeficientes_b.head(20))
+```
+
+## Precauciones para interpretar las tablas
+
+### Variables numéricas
+
+Edad, carga y duración fueron estandarizadas. Su odds ratio representa el cambio
+asociado con aumentar aproximadamente **una desviación estándar**, no con un año,
+una hora o un paciente adicional. Esto permite comparar escalas, pero exige
+consultar las distribuciones de la etapa 05 para volver a unidades originales.
+
+### Variables categóricas
+
+El codificador conserva un indicador para cada categoría. Por esta razón, el
+odds ratio mostrado para una categoría describe su coeficiente dentro de la
+codificación regularizada, pero no es por sí solo una comparación limpia contra
+una categoría de referencia omitida. Para comparar dos categorías específicas
+se debe utilizar `exp(coeficiente_1 - coeficiente_2)`.
+
+Esta precisión es importante: evita afirmar, por ejemplo, que una categoría
+duplica directamente el riesgo frente a todas las demás.
+
+### Indicadores binarios
+
+Para un indicador como fin de semana o duración faltante, el coeficiente señala
+la dirección asociada con activar ese indicador dentro del resto de la
+codificación. Las categorías siguen representando asociaciones, no causas.
+
+## Asociaciones de mayor magnitud
+
+Las figuras muestran los diez coeficientes positivos y los diez negativos de
+mayor magnitud en cada modelo. El color representa la dirección; la longitud de
+la barra representa el coeficiente, no una probabilidad.
+
+```{python}
+#| label: graficar-coeficientes-etapa-10
+def extremos_coeficientes(tabla: pd.DataFrame, cantidad: int = 10) -> pd.DataFrame:
+    """Selecciona asociaciones positivas y negativas sin perder el signo."""
+    positivas = tabla.nlargest(cantidad, "coeficiente")
+    negativas = tabla.nsmallest(cantidad, "coeficiente")
+    return pd.concat([negativas, positivas]).drop_duplicates(
+        "variable_transformada"
+    ).sort_values("coeficiente")
+
+
+figura, ejes = plt.subplots(1, 2, figsize=(15, 9))
+for eje, nombre, tabla in (
+    (ejes[0], "Modelo A — ingreso", coeficientes_a),
+    (ejes[1], "Modelo B — salida", coeficientes_b),
+):
+    extremos = extremos_coeficientes(tabla)
+    colores = np.where(extremos["coeficiente"] >= 0, "#C44E52", "#4C72B0")
+    eje.barh(extremos["variable_transformada"], extremos["coeficiente"], color=colores)
+    eje.axvline(0, color="black", linewidth=0.8)
+    eje.set_title(nombre)
+    eje.set_xlabel("Coeficiente de la regresión logística")
+
+figura.suptitle("Asociaciones predictivas de mayor magnitud", fontsize=14)
+figura.tight_layout()
+COEFFICIENT_FIGURE_PATH.parent.mkdir(parents=True, exist_ok=True)
+figura.savefig(COEFFICIENT_FIGURE_PATH, dpi=160, bbox_inches="tight")
+plt.show()
+```
+
+## Lectura resumida de cada modelo
+
+El siguiente texto se genera directamente desde los coeficientes ajustados para
+evitar que la narrativa y las tablas se contradigan.
+
+```{python}
+#| label: resumir-interpretacion-etapa-10
+def lista_extremos(tabla: pd.DataFrame, positivos: bool) -> str:
+    """Devuelve tres nombres para una síntesis narrativa reproducible."""
+    ordenada = tabla.sort_values("coeficiente", ascending=not positivos)
+    return ", ".join(f"`{nombre}`" for nombre in ordenada.head(3)["variable_transformada"])
+
+
+display(
+    Markdown(
+        "**Modelo A.** Las asociaciones positivas más altas corresponden a "
+        f"{lista_extremos(coeficientes_a, True)}. Las asociaciones negativas "
+        f"más altas corresponden a {lista_extremos(coeficientes_a, False)}.\n\n"
+        "**Modelo B.** Las asociaciones positivas más altas corresponden a "
+        f"{lista_extremos(coeficientes_b, True)}. Las asociaciones negativas "
+        f"más altas corresponden a {lista_extremos(coeficientes_b, False)}."
+    )
+)
+```
+
+La magnitud no debe confundirse con utilidad clínica. Una categoría puede tener
+un coeficiente alto y, al mismo tiempo, ser infrecuente, representar una decisión
+asistencial o reflejar la organización del servicio.
+
+## Comparación entre los momentos A y B
+
+El Modelo A se limita a la información disponible después del triage. Sus
+coeficientes permiten estudiar si edad, triage, afiliación, calendario y volumen
+reciente aportan señal antes de conocer la conducta.
+
+El Modelo B incorpora información disponible al registrar la conducta: tiempo
+ya consumido, ubicación, grupo de cama, conducta y carga activa reconstruida.
+Estas variables describen un momento clínico y operativo más avanzado, lo cual
+es consistente con su mayor ROC-AUC en la evaluación final.
+
+`especialidades_tratantes` no aparece en ninguna explicación porque fue excluida
+antes del modelado: el archivo conserva su último valor y no permite reconstruir
+qué especialidades estaban registradas en el instante de predicción.
+
+## Limitaciones
+
+- Los coeficientes describen asociaciones predictivas, no efectos causales.
+- Los coeficientes categóricos dependen de la codificación y la regularización.
+- Predictores correlacionados pueden repartirse la señal; esto es especialmente
+  relevante para los volúmenes de ingresos de 3, 6 y 24 horas.
+- Una variable importante no necesariamente es modificable por el hospital.
+- La carga activa es una reconstrucción desde marcas temporales completas y no
+  una medición directa de ocupación, camas disponibles o personal.
+- Las asociaciones pueden cambiar cuando cambien los procesos o la población.
+
+## Artefactos y cierre de la etapa
+
+Se guardan tablas agregadas y una figura. No se exportan predicciones, datos de
+pacientes ni explicaciones individuales.
+
+```{python}
+#| label: guardar-interpretabilidad-etapa-10
+save_dataframe_as_csv(coeficientes_a, COEFFICIENTS_A_PATH)
+save_dataframe_as_csv(coeficientes_b, COEFFICIENTS_B_PATH)
+
+metadatos = {
+    "metodo": "coeficientes_y_odds_ratios_de_regresion_logistica",
+    "usa_importancia_permutacion": False,
+    "usa_datos_prueba": False,
+    "modelo_a": {
+        "predictores_originales": len(MODEL_A_PREDICTORS),
+        "variables_transformadas": len(coeficientes_a),
+        "tabla": COEFFICIENTS_A_PATH.name,
+    },
+    "modelo_b": {
+        "predictores_originales": len(MODEL_B_PREDICTORS),
+        "variables_transformadas": len(coeficientes_b),
+        "tabla": COEFFICIENTS_B_PATH.name,
+    },
+    "figura": COEFFICIENT_FIGURE_PATH.name,
+}
+save_json(metadatos, INTERPRETABILITY_METRICS_PATH)
+
+display(
+    Markdown(
+        "La interpretación quedó cerrada sin modificar los modelos finales. "
+        "La etapa 11 podrá integrar desempeño, asociaciones, utilidad y "
+        "limitaciones en las conclusiones del proyecto."
+    )
+)
+```
