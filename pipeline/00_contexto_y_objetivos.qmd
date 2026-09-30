@@ -157,15 +157,18 @@ El análisis se desarrolla en etapas secuenciales. Cada una responde una pregunt
 
 | Etapa | Pregunta que responde |
 |---:|---|
-| 01 — Ingesta y validación | ¿Qué contiene realmente la fuente original y qué problemas presenta? |
-| 02 — Limpieza y calidad | ¿Qué información debe retirarse antes de cualquier análisis? |
-| 03 — Análisis exploratorio | ¿Cómo se comportan la población, los faltantes y los dos tiempos? |
-| 04 — Ingeniería de variables | ¿Cómo se construyen los objetivos y qué predictores son válidos para A y B? |
-| 05 — Preprocesamiento | ¿Cómo se separan y transforman los datos sin fuga? |
-| 06–07 — Modelado | ¿Qué modelos superan referencias simples y generalizan mejor? |
-| 08 — Evaluación | ¿Cómo funcionan los modelos sobre casos nunca utilizados? |
-| 09 — Interpretabilidad | ¿Qué variables se asocian con las predicciones? |
-| 10 — Conclusiones | ¿Qué se aprendió y cuáles son los límites del estudio? |
+| 00 — Contexto y objetivos | ¿Qué problemas se quieren predecir, en qué momentos y con qué alcance? |
+| 01 — ETL: extracción y anonimización | ¿Qué contiene la fuente original, qué problemas presenta y cómo se protegen los identificadores? |
+| 02 — Diseño analítico y selección | ¿Qué variables pueden utilizarse legítimamente en cada modelo y cuáles deben excluirse? |
+| 03 — ETL: transformación y calidad | ¿Cómo se corrigen tipos, categorías, duraciones y problemas de calidad antes del análisis? |
+| 04 — Conjuntos de datos y partición temporal | ¿Cómo se construyen los conjuntos de A y B y se separan desarrollo y prueba futura? |
+| 05 — EDA sobre desarrollo | ¿Cómo se comportan los objetivos, los faltantes y los predictores sin consultar la prueba? |
+| 06 — Feature engineering y preprocesamiento | ¿Qué variables se derivan y cómo se transforman sin fuga de información? |
+| 07 — Modelo baseline | ¿Qué desempeño ofrecen una referencia ingenua y un modelo estadístico sencillo? |
+| 08 — Modelos comparativos | ¿Qué modelo, hiperparámetros y umbral se seleccionan mediante validación temporal? |
+| 09 — Evaluación final | ¿Cómo funcionan los modelos seleccionados sobre casos nunca utilizados? |
+| 10 — Interpretabilidad | ¿Qué variables se asocian con las predicciones de los modelos finales? |
+| 11 — Conclusiones | ¿Qué se aprendió, qué utilidad tiene y cuáles son los límites del estudio? |
 
 ## Conclusión de la etapa
 
