@@ -95,9 +95,10 @@ La etapa 01 utiliza `data/raw/BD_CENSO_2024_2026.xlsx` y anonimiza los identific
 
 ## Estado
 
-Las etapas 00 a 08 están terminadas. Las etapas 09 a 11 permanecen pendientes:
-evaluación final sobre la prueba temporal reservada, interpretabilidad y
-conclusiones.
+Las etapas 00 a 09 están terminadas. Las etapas 10 y 11 permanecen pendientes:
+interpretabilidad y conclusiones. La etapa 09 realizó la evaluación final única
+sobre la prueba temporal reservada, sin reajustar modelos, hiperparámetros ni
+umbrales a partir de sus resultados.
 
 La configuración previa a la evaluación final está congelada en
 `config/modelos_congelados.yml`. La etapa 09 debe validar ese manifiesto y sus
@@ -105,11 +106,12 @@ huellas antes de abrir las particiones de prueba. El contrato incluye los
 cuatro archivos de desarrollo y prueba, el commit metodológico, todos los
 parámetros de los clasificadores y los artefactos de selección.
 
-El manifiesto no se modifica al abrir la prueba. La apertura controlada se
-registra una sola vez en `outputs/metrics/09_apertura_prueba.json`; exige
+El manifiesto no se modifica después de abrir la prueba. La apertura controlada
+quedó registrada una sola vez en `outputs/metrics/09_apertura_prueba.json`, con
 confirmación explícita, repositorio Git limpio y coincidencia de todas las
-huellas. Mientras la etapa 09 permanezca deshabilitada, ese archivo no debe
-existir.
+huellas. Los resultados agregados se conservan en
+`outputs/metrics/09_evaluacion_final.json` y las tablas y figuras numeradas con
+el prefijo `09_`.
 
 `especialidades_tratantes` se conserva únicamente en la auditoría de calidad y
 no participa en los modelos. El servicio médico confirmó que puede modificarse

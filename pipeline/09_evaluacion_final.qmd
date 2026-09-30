@@ -344,7 +344,22 @@ tabla_metricas = pd.DataFrame(
         {"modelo": "B", "umbral": umbral_b, **metricas_b},
     ]
 )
-tabla_metricas
+display(tabla_metricas)
+
+display(
+    Markdown(
+        f"**Modelo A.** En {metricas_a['registros']:,} registros de prueba, "
+        f"detectó el {metricas_a['recall']:.1%} de las estancias prolongadas. "
+        f"La precision fue {metricas_a['precision']:.1%}, el F1 "
+        f"{metricas_a['f1']:.3f}, el ROC-AUC {metricas_a['roc_auc']:.3f} y "
+        f"el PR-AUC {metricas_a['pr_auc']:.3f}.\n\n"
+        f"**Modelo B.** En {metricas_b['registros']:,} registros de prueba, "
+        f"detectó el {metricas_b['recall']:.1%} de las estancias prolongadas. "
+        f"La precision fue {metricas_b['precision']:.1%}, el F1 "
+        f"{metricas_b['f1']:.3f}, el ROC-AUC {metricas_b['roc_auc']:.3f} y "
+        f"el PR-AUC {metricas_b['pr_auc']:.3f}."
+    )
+)
 ```
 
 La prevalencia se muestra por primera vez porque la prueba ya fue abierta
@@ -404,7 +419,16 @@ comparacion = pd.DataFrame(
 comparacion["diferencia_prueba_menos_validacion"] = (
     comparacion["prueba"] - comparacion["validacion"]
 )
-comparacion
+display(comparacion)
+
+display(
+    Markdown(
+        "En los dos modelos, ROC-AUC y PR-AUC se conservaron o aumentaron en "
+        "la prueba temporal. Esto no demuestra causalidad ni garantiza el "
+        "mismo rendimiento futuro, pero no presenta evidencia de deterioro "
+        "frente a la validación utilizada para seleccionar los modelos."
+    )
+)
 ```
 
 ## Revisión descriptiva por subgrupos

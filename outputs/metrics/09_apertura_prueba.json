@@ -1,0 +1,16 @@
+{
+  "estado": "prueba_final_abierta",
+  "fecha_hora_utc": "2026-09-30T03:11:13.278677+00:00",
+  "confirmacion_explicita": true,
+  "manifiesto": "config\\modelos_congelados.yml",
+  "sha256_manifiesto": "e3c3440e3e9aba4d510eee51320139a069fd05c3f2561746b6dc2e4b13efed15",
+  "commit_metodologico": "2658492a80b8b1dc99bf24ca40d80ad975d157e1",
+  "commit_ejecucion": "ef09ac548d842093d4aef4a48c7df846c0c29c5b",
+  "huellas_particiones": {
+    "modelo_a_desarrollo": "df210b09b99fb9acb0ce99f8594460e8661fe77680bc3b87937411ea175c2299",
+    "modelo_a_prueba": "6297ec63e208c03451672a4c59d483109f08de96c2ed5c68ef3fe6fd3fcccad5",
+    "modelo_b_desarrollo": "d54d988d2451d850076f020fd2ce0254cea223cb95378d8fd7a3d331c7acd0b9",
+    "modelo_b_prueba": "5f37f17acccb0f79e9d5eed12786f47c037ead72ac317d29a7550d6648e3a9ac"
+  },
+  "regla": "evaluacion_unica_sin_reajuste_posterior"
+}
