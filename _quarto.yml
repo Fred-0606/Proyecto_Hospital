@@ -17,10 +17,18 @@ project:
     - pipeline/10_interpretabilidad.qmd
     - pipeline/11_conclusiones.qmd
 
+lang: es
+
 website:
   title: "Proyecto Hospital"
+  page-navigation: true
+  reader-mode: true
+  search:
+    location: sidebar
+    type: overlay
   sidebar:
     style: docked
+    search: true
     contents:
       - href: index.qmd
         text: "Inicio"
@@ -59,12 +67,21 @@ website:
 
 format:
   html:
+    theme: cosmo
     toc: true
+    toc-title: "En esta página"
+    toc-depth: 3
+    toc-expand: 2
     number-sections: true
+    anchor-sections: true
     code-fold: false
+    code-copy: true
     code-overflow: scroll
+    code-block-bg: "#f4f8fa"
+    code-block-border-left: "#159e9c"
     df-print: paged
     css: styles.css
+    include-after-body: includes/toc-highlight.html
     smooth-scroll: true
 
 jupyter: python3

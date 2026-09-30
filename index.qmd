@@ -6,6 +6,10 @@ execute:
   enabled: false
 ---
 
+::: {.homepage-hero-strip}
+<img src="assets/hero-estancias-urgencias.png" alt="Horizontes temporales abstractos en azul y turquesa">
+:::
+
 ## Propósito del proyecto
 
 Este proyecto de grado desarrolla un flujo reproducible de ciencia de datos para anticipar demoras en dos etapas distintas de la atención de urgencias. La unidad de análisis es cada episodio de atención en el servicio de urgencias. El umbral de estancia prolongada es mayor o igual a seis horas y corresponde a un objetivo institucional definido antes del análisis.
@@ -59,9 +63,9 @@ Una variable solo podrá ser predictora si:
 | 06 | Documentar feature engineering y preprocesamiento | Terminado |
 | 07 | Establecer baselines para ambos objetivos | Terminado |
 | 08 | Comparar modelos bajo el mismo protocolo | Terminado |
-| 09 | Evaluar una sola vez sobre prueba | Pendiente |
-| 10 | Interpretar asociaciones predictivas | Pendiente |
-| 11 | Integrar resultados, limitaciones y recomendaciones | Pendiente |
+| 09 | Evaluar una sola vez sobre prueba | Terminado |
+| 10 | Interpretar asociaciones predictivas | Terminado |
+| 11 | Integrar resultados, limitaciones y recomendaciones | Terminado |
 
 ## Navegación recomendada
 

@@ -1,0 +1,62 @@
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const heroStrip = document.querySelector(".homepage-hero-strip");
+  const titleBlock = document.querySelector("#title-block-header");
+  if (heroStrip && titleBlock) {
+    titleBlock.appendChild(heroStrip);
+    heroStrip.classList.add("is-mounted");
+  }
+
+  const toc = document.querySelector("#TOC");
+  if (!toc) return;
+
+  const links = Array.from(toc.querySelectorAll("a.nav-link[href^='#']"));
+  const items = links
+    .map((link) => {
+      const id = decodeURIComponent(link.getAttribute("href").slice(1));
+      return { link, section: document.getElementById(id) };
+    })
+    .filter((item) => item.section);
+
+  if (!items.length) return;
+
+  let scheduled = false;
+
+  const updateActiveSection = () => {
+    const readingLine = Math.min(180, window.innerHeight * 0.28);
+    let activeItem = items[0];
+
+    for (const item of items) {
+      if (item.section.getBoundingClientRect().top <= readingLine) {
+        activeItem = item;
+      } else {
+        break;
+      }
+    }
+
+    for (const item of items) {
+      const isActive = item === activeItem;
+      item.link.classList.toggle("active", isActive);
+      if (isActive) {
+        item.link.setAttribute("aria-current", "location");
+      } else {
+        item.link.removeAttribute("aria-current");
+      }
+    }
+
+    scheduled = false;
+  };
+
+  const scheduleUpdate = () => {
+    if (!scheduled) {
+      scheduled = true;
+      window.requestAnimationFrame(updateActiveSection);
+    }
+  };
+
+  window.addEventListener("scroll", scheduleUpdate, { passive: true });
+  window.addEventListener("resize", scheduleUpdate);
+  window.addEventListener("hashchange", scheduleUpdate);
+  updateActiveSection();
+});
+</script>
