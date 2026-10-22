@@ -1,8 +1,10 @@
+![Previsualización de la aplicación web para predicción de estancias prolongadas](assets/previsualizacion_aplicacion_web.png)
+
 # Proyecto Hospital
 
 ## Descripción
 
-Proyecto de grado de Maestría en Ciencia de Datos orientado al análisis y la predicción de estancias prolongadas en un servicio de urgencias hospitalarias de Bogotá. El proyecto utiliza Python, scikit-learn y Quarto, con una organización modular y un pipeline secuencial.
+Proyecto de grado de Maestría en Ciencia de Datos orientado al análisis y la predicción de estancias prolongadas en un servicio de urgencias hospitalarias de Bogotá. El proyecto utiliza Python, scikit-learn y Quarto, con una organización modular, un pipeline secuencial y una aplicación web local para ejecutar inferencias con los modelos congelados.
 
 ## Objetivo
 
@@ -11,12 +13,31 @@ Desarrollar dos modelos de clasificación: uno para predecir si el tiempo entre 
 ## Estructura
 
 - `config/`: configuración reproducible del proyecto.
+- `app/`: interfaz web local y servidor de inferencia.
 - `data/`: datos locales crudos, intermedios y procesados; no se versionan.
 - `pipeline/`: documentos Quarto ordenados según las etapas del análisis.
 - `src/`: código Python reutilizable.
 - `scripts/`: puntos de entrada para validación y ejecución.
 - `outputs/`: figuras, tablas, métricas, modelos y otros artefactos.
 - `tests/`: pruebas básicas con pytest.
+
+## Aplicación web
+
+La aplicación ofrece una vista interactiva de los dos momentos predictivos, las métricas del estudio y un simulador conectado a los pipelines reales. El archivo hospitalario se procesa localmente y no se incorpora al repositorio.
+
+En Windows, la forma recomendada de iniciarla es hacer doble clic en:
+
+```text
+Abrir aplicacion.cmd
+```
+
+El iniciador comprueba el entorno, levanta el servidor en `http://127.0.0.1:8000` y abre el navegador. Si todavía no existen los modelos locales de inferencia, genérelos desde las particiones de desarrollo:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\train_inference_models.py
+```
+
+Los archivos `.joblib` y sus metadatos permanecen ignorados por Git. Consulte [`app/README.md`](app/README.md) para conocer el contrato de carga, inferencia y cierre de la aplicación.
 
 ## Instalación en Windows
 
@@ -95,7 +116,7 @@ La etapa 01 utiliza `data/raw/BD_CENSO_2024_2026.xlsx` y anonimiza los identific
 
 ## Estado
 
-Las etapas 00 a 11 están terminadas. La etapa 09 realizó la evaluación final
+Las etapas 00 a 11 están terminadas y la aplicación web local está integrada. La etapa 09 realizó la evaluación final
 única sobre la prueba temporal reservada, sin reajustar modelos, hiperparámetros
 ni umbrales a partir de sus resultados. La etapa 10 interpreta las regresiones
 logísticas mediante coeficientes y odds ratios calculados exclusivamente con

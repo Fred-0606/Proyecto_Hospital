@@ -10,6 +10,12 @@ execute:
 <img src="assets/hero-estancias-urgencias.png" alt="Horizontes temporales abstractos en azul y turquesa">
 :::
 
+## Aplicación web local
+
+El proyecto incluye una interfaz interactiva que conecta los dos modelos congelados con un flujo local de carga, exploración e inferencia. Puede iniciarse en Windows mediante `Abrir aplicacion.cmd`; los datos y los modelos serializados permanecen fuera de Git.
+
+![Previsualización de la aplicación web de predicción](assets/previsualizacion_aplicacion_web.png){fig-alt="Pantalla inicial de la aplicación web para anticipar estancias prolongadas en urgencias"}
+
 ## Propósito del proyecto
 
 Este proyecto de grado desarrolla un flujo reproducible de ciencia de datos para anticipar demoras en dos etapas distintas de la atención de urgencias. La unidad de análisis es cada episodio de atención en el servicio de urgencias. El umbral de estancia prolongada es mayor o igual a seis horas y corresponde a un objetivo institucional definido antes del análisis.

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Interfaz interactiva para la predicción de estancias prolongadas en urgencias.">
+  <title>Predicción de estancias prolongadas en urgencias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="aurora aurora-a"></div><div class="aurora aurora-b"></div>
+  <div class="cursor-glow" aria-hidden="true"></div>
+  <header class="topbar">
+    <a class="brand" href="#inicio" aria-label="Predicción de estancias prolongadas en urgencias, ir al inicio"><span class="brand-mark">PE</span><span>PREDICCIÓN DE ESTANCIAS<small>PROLONGADAS EN URGENCIAS</small></span></a>
+    <nav aria-label="Navegación principal"><a href="#datos">Datos</a><a href="#modelos">Modelos</a><a href="#metricas">Métricas</a><a href="#simulador">Simulador</a></nav>
+    <div class="status" id="apiStatus"><i></i> Verificando modelos…</div>
+  </header>
+
+  <main>
+    <section class="hero reveal" id="inicio">
+      <div class="eyebrow"><span></span> LABORATORIO PREDICTIVO HOSPITALARIO</div>
+      <h1>Anticipa la estancia.<br><em>Decide con contexto.</em></h1>
+      <p>Explora dos momentos de decisión, compara el rendimiento y simula escenarios de atención desde una experiencia visual diseñada para entender, no solo medir.</p>
+      <div class="hero-actions"><a class="button primary magnetic" href="#datos">Iniciar análisis <span>↘</span></a><button class="button ghost" id="tourButton">Ver recorrido <span>03 min</span></button></div>
+      <div class="hero-orbit" aria-hidden="true"><div class="orbit-ring ring-1"></div><div class="orbit-ring ring-2"></div><div class="core"><strong>6h</strong><small>horizonte</small></div><span class="node n1">A</span><span class="node n2">B</span></div>
+    </section>
+
+    <section class="workflow reveal" aria-label="Flujo del análisis">
+      <div class="workflow-item active"><b>01</b><span>Cargar datos</span></div><i></i>
+      <div class="workflow-item"><b>02</b><span>Configurar</span></div><i></i>
+      <div class="workflow-item"><b>03</b><span>Comparar</span></div><i></i>
+      <div class="workflow-item"><b>04</b><span>Simular</span></div>
+    </section>
+
+    <section class="section reveal" id="datos">
+      <div class="section-head"><div><span class="step">01 / DATOS</span><h2>Comienza con tu dataset</h2></div><p>El archivo permanece en este navegador. No se carga a ningún servidor.</p></div>
+      <div class="upload-grid">
+        <label class="dropzone" id="dropzone" for="fileInput">
+          <input id="fileInput" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" hidden>
+          <div class="upload-icon"><span>↑</span></div>
+          <h3>Arrastra tu archivo Excel aquí</h3><p>Debe contener la hoja exacta CENSO · XLSX o XLS</p><button type="button" class="mini-button">Seleccionar Excel</button>
+        </label>
+        <div class="data-preview glass">
+          <div class="card-top"><div><small>ESTADO DEL DATASET</small><h3 id="datasetName">Esperando datos</h3></div><span class="pill" id="datasetStatus">Sin cargar</span></div>
+          <div class="data-stats"><div><strong id="rowCount">—</strong><span>Registros</span></div><div><strong id="columnCount">—</strong><span>Variables</span></div><div><strong id="qualityScore">—</strong><span>Completitud</span></div></div>
+          <div class="quality-bar"><span id="qualityBar"></span></div>
+          <div id="columnChips" class="column-chips"><span>Esperando la hoja CENSO</span></div>
+          <button class="text-button" id="sampleButton">Ver demostración del flujo →</button>
+        </div>
+      </div>
+      <div class="pipeline-runner glass" id="pipelineRunner" aria-live="polite">
+        <div class="pipeline-title"><div><small>FLUJO DE TRABAJO DEL PROYECTO</small><h3>Análisis iniciado exclusivamente desde CENSO</h3></div><span id="pipelineState">Esperando hoja CENSO</span></div>
+        <div class="pipeline-stages">
+          <div class="pipeline-stage" data-stage="0"><b>01</b><span><strong>Ingesta y validación</strong><small>Solo CENSO; segunda fila como encabezado</small></span><i></i></div>
+          <div class="pipeline-stage" data-stage="1"><b>02</b><span><strong>Anonimización</strong><small>Protección de identificadores sensibles</small></span><i></i></div>
+          <div class="pipeline-stage" data-stage="2"><b>03</b><span><strong>Transformación y calidad</strong><small>Fechas, categorías, nulos y coherencia</small></span><i></i></div>
+          <div class="pipeline-stage" data-stage="3"><b>04</b><span><strong>Partición temporal</strong><small>Desarrollo y prueba futura</small></span><i></i></div>
+          <div class="pipeline-stage" data-stage="4"><b>05</b><span><strong>Ingeniería de variables</strong><small>Momentos A y B sin fuga de información</small></span><i></i></div>
+          <div class="pipeline-stage" data-stage="5"><b>06</b><span><strong>Modelado y evaluación</strong><small>Métricas y simulación interactiva</small></span><i></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section reveal" id="modelos">
+      <div class="section-head"><div><span class="step">02 / MOMENTOS Y MODELOS</span><h2>Dos decisiones. Un mismo horizonte.</h2></div><p>Selecciona uno o ambos modelos para activar la comparación.</p></div>
+      <div class="model-grid">
+        <article class="model-card selected" data-model="A" tabindex="0">
+          <div class="card-top"><span class="model-letter cyan">A</span><label class="switch" aria-label="Activar modelo A"><input type="checkbox" checked data-model-toggle="A"><span></span></label></div>
+          <span class="moment">TIEMPO 01 · AL INGRESO</span><h3>Riesgo desde el ingreso</h3><p>Estima una estancia prolongada con la información disponible en el primer contacto.</p>
+          <div class="horizon"><span>Horizonte previsto</span><strong>≥ 6 horas</strong></div>
+          <div class="tags"><span>Edad</span><span>Triage</span><span>Afiliación</span><span>Volumen 3/6/24h</span><span>Calendario</span></div>
+          <div class="model-foot"><span>Regresión logística</span><b>Umbral 28.2%</b></div>
+        </article>
+        <article class="model-card selected" data-model="B" tabindex="0">
+          <div class="card-top"><span class="model-letter coral">B</span><label class="switch" aria-label="Activar modelo B"><input type="checkbox" checked data-model-toggle="B"><span></span></label></div>
+          <span class="moment">TIEMPO 02 · AL DEFINIR CONDUCTA</span><h3>Riesgo desde la salida</h3><p>Recalcula el riesgo cuando ya existe conducta clínica y contexto operacional.</p>
+          <div class="horizon"><span>Horizonte previsto</span><strong>≥ 6 horas</strong></div>
+          <div class="tags"><span>Conducta</span><span>Sala</span><span>Cama</span><span>Carga activa</span><span>Duración previa</span></div>
+          <div class="model-foot"><span>Regresión logística</span><b>Umbral 26.4%</b></div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section reveal" id="metricas">
+      <div class="section-head"><div><span class="step">03 / EVALUACIÓN</span><h2>Compara lo que importa</h2></div><p>Resultados del conjunto de prueba temporal reservado (marzo de 2026 en adelante).</p></div>
+      <div class="metric-controls" id="metricControls"></div>
+      <div class="dashboard-grid">
+        <div class="chart-card glass"><div class="card-top"><div><small>COMPARACIÓN</small><h3>Desempeño por métrica</h3></div><span class="legend"><i class="a"></i>A <i class="b"></i>B</span></div><canvas id="metricChart" role="img" aria-label="Gráfico comparativo de métricas"></canvas></div>
+        <div class="score-card glass"><small>LECTURA RÁPIDA</small><div class="big-score"><span id="headlineScore">79.6</span><sup>%</sup></div><h3 id="headlineTitle">ROC–AUC del modelo B</h3><p id="headlineCopy">La segunda medición discrimina mejor el riesgo al incorporar conducta y carga operacional.</p><div class="delta">↑ <b>17.9 puntos</b> frente al modelo A</div></div>
+      </div>
+      <div class="matrix-grid">
+        <div class="matrix-card"><div><span class="model-letter cyan">A</span><h3>Matriz de confusión</h3></div><div class="matrix"><span class="tn">81<small>VN</small></span><span class="fp">3.002<small>FP</small></span><span class="fn">38<small>FN</small></span><span class="tp">4.952<small>VP</small></span></div></div>
+        <div class="matrix-card"><div><span class="model-letter coral">B</span><h3>Matriz de confusión</h3></div><div class="matrix"><span class="tn">3.328<small>VN</small></span><span class="fp">2.186<small>FP</small></span><span class="fn">378<small>FN</small></span><span class="tp">2.212<small>VP</small></span></div></div>
+      </div>
+    </section>
+
+    <section class="section simulator reveal" id="simulador">
+      <div class="section-head"><div><span class="step">04 / PREDICCIÓN REAL</span><h2>Evalúa un escenario</h2></div><p>Inferencia ejecutada por los pipelines entrenados y serializados del proyecto.</p></div>
+      <div class="sim-grid">
+        <form class="sim-form glass" id="simForm">
+          <div class="form-head"><h3>Paciente nuevo</h3><span id="simMoment">Momento A</span></div>
+          <div class="segmented"><button type="button" class="active" data-moment="A">Ingreso</button><button type="button" data-moment="B">Conducta</button></div>
+          <label>Edad <output id="ageOut">52 años</output><input id="age" type="range" min="0" max="120" value="52"></label>
+          <div class="form-row"><label>Triage<select id="triage" required disabled></select></label><label>Afiliación<select id="affiliation" required disabled></select></label></div>
+          <label>Fecha y hora de ingreso<input id="admissionDate" type="datetime-local" required></label>
+          <div id="momentBFields" hidden><label>Fecha y hora de registro de la conducta<input id="conductDate" type="datetime-local"></label><div class="form-row"><label>Conducta registrada<select id="conduct" disabled></select></label><label>Sala de observación<select id="observationRoom" disabled></select></label></div><label>Cama registrada<select id="bed" disabled></select></label></div>
+          <div class="automatic-box"><b>Contexto calculado automáticamente</b><p>El sistema deriva calendario, volúmenes recientes, duración previa, grupo de cama y carga activa desde las fechas del paciente y el CENSO cargado.</p></div>
+          <button type="submit" class="button primary run-button" id="predictButton">Calcular predicción real <span>→</span></button>
+        </form>
+        <div class="result-panel">
+          <div class="risk-visual" id="riskVisual"><svg viewBox="0 0 220 220" aria-label="Probabilidad simulada"><circle class="track" cx="110" cy="110" r="86"></circle><circle class="progress" id="riskCircle" cx="110" cy="110" r="86"></circle></svg><div><strong id="riskValue">34</strong><sup>%</sup><span>riesgo estimado</span></div></div>
+          <span class="risk-badge" id="riskBadge">MODELO SIN EJECUTAR</span><h3 id="riskTitle">Predicción: —</h3><p id="riskExplanation">Completa las variables y solicita una predicción al modelo entrenado.</p>
+          <div class="threshold-line"><span style="--x:28%"></span><i id="probabilityMarker" style="--x:34%"></i></div><div class="threshold-labels"><span>0%</span><b>umbral 28.2%</b><span>100%</span></div>
+          <div class="disclaimer"><b>✓</b><span>Resultado generado por el pipeline entrenado. Debe apoyar, no sustituir, el criterio clínico y operacional.</span></div>
+          <details class="feature-audit"><summary>Ver variables utilizadas</summary><div id="featureAudit">Se mostrará la trazabilidad después de predecir.</div></details>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer><div class="brand"><span class="brand-mark">PE</span><span>PREDICCIÓN DE ESTANCIAS</span></div><p>Proyecto de grado · Urgencias · Inteligencia clínica responsable</p><div class="footer-actions"><span>Datos locales · random_state=42</span><button type="button" class="shutdown-button" id="shutdownButton">Cerrar aplicación</button></div></footer>
+  <div class="shutdown-screen" id="shutdownScreen" hidden><div><span class="brand-mark">PE</span><h2>Aplicación cerrada</h2><p>Los modelos se apagaron correctamente. Ya puedes cerrar esta pestaña.</p></div></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

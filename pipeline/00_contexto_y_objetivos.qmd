@@ -16,7 +16,7 @@ el alcance y las reglas temporales que guiarán todas las decisiones posteriores
 
 Los servicios de urgencias atienden pacientes con necesidades clínicas y administrativas muy diferentes. Después de la clasificación inicial o *triage*, cada atención avanza por varias decisiones: valoración, definición de una conducta, hospitalización o salida a casa y, finalmente, egreso administrativo. Cuando alguna de estas transiciones tarda más de lo esperado, aumenta la permanencia del paciente y se dificulta el flujo del servicio.
 
-Este proyecto utiliza datos de un hospital correspondientes a atenciones realizadas en su servicio de urgencias. La fuente inicial contiene **42.537 registros y 40 variables**. Cada fila representa una atención y las columnas describen información clínica básica, ubicación, tiempos, decisiones operativas y estados registrados durante el proceso.
+Este proyecto utiliza datos de un hospital correspondientes a atenciones realizadas en su servicio de urgencias. La fuente inicial contiene **42.537 registros y 40 columnas**. Cada fila representa una atención y las columnas describen información clínica básica, ubicación, tiempos, decisiones operativas y estados registrados durante el proceso (incluyen columnas totalmente vacías).
 
 El propósito general es emplear ciencia de datos para anticipar demoras relevantes. Sin embargo, una única medida de “estancia total” ocultaría en qué parte del proceso ocurre el retraso. Por esta razón, el estudio se divide desde el comienzo en dos problemas predictivos diferentes.
 
@@ -103,11 +103,11 @@ Un modelo único de tiempo total mezclaría ambos mecanismos. En cambio, dos mod
 
 ## La fuente de datos
 
-El archivo original contiene 40 variables. No todas serán predictores. Algunas son identificadores o datos sensibles, otras carecen de variación, algunas contienen demasiados nulos y varias fueron creadas durante o después del desenlace que se desea anticipar.
+El archivo original contiene 40 columnas. No todas serán predictores. Algunas son identificadores o datos sensibles, otras carecen de variación, algunas contienen demasiados nulos y varias fueron creadas durante o después del desenlace que se desea anticipar.
 
 Además, la fuente conserva el **último valor registrado** de los campos que pueden actualizarse. Esto exige especial cuidado: una variable pudo existir al inicio, pero el valor observado en el archivo podría incorporar información añadida posteriormente.
 
-La etapa 01 examinará las 40 variables sin modificarlas. La etapa 02 retirará únicamente columnas universalmente improcedentes para ambos modelos. Finalmente, la etapa 04 construirá dos matrices predictoras distintas según el momento de disponibilidad.
+La etapa 01 examinará las 40 columnas sin modificarlas. La etapa 02 retirará únicamente columnas universalmente improcedentes para ambos modelos. Finalmente, la etapa 04 construirá dos matrices predictoras distintas según el momento de disponibilidad.
 
 ## Definiciones operativas confirmadas
 
@@ -172,6 +172,6 @@ El análisis se desarrolla en etapas secuenciales. Cada una responde una pregunt
 
 ## Conclusión de la etapa
 
-El proyecto parte de un dataset hospitalario de urgencias con 42.537 registros y 40 variables, pero no pretende utilizar todas las columnas ni predecir una única duración general. El diseño separa el proceso en Tiempo A y Tiempo B para producir dos modelos más interpretables y alineados con decisiones operativas diferentes.
+El proyecto parte de un dataset hospitalario de urgencias con 42.537 registros y 40 columnas, pero no pretende utilizar todas las columnas ni predecir una única duración general. El diseño separa el proceso en Tiempo A y Tiempo B para producir dos modelos más interpretables y alineados con decisiones operativas diferentes.
 
 Con este contexto establecido, la etapa 01 puede examinar la fuente original sin modificarla y documentar la calidad real de los datos antes de aplicar cualquier transformación.
